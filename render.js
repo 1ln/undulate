@@ -9,23 +9,18 @@ let uniforms;
 let reset;
 
 let nhash,hash;  
-let tex_size;
-let tex;
-let n;
-let noise_texture;
 
 let mouse_pressed,mouse_held,mouse;
-let swipe_dir;
-
-let controls;
 
 let cam,scene,geometry,mesh,mat;
 
 let cam_target;
 
-let delta;
-let clock;
+let box_material;
+let box_geometry;
+let box;
 
+let rot_angle;
 
 function init() {
 
@@ -38,37 +33,27 @@ function init() {
     renderer = new THREE.WebGLRenderer({canvas:canvas,context:context});
 
     cam = new THREE.PerspectiveCamera(45.,w/h,0.0,1000.0);
-    raycaster = new THREE.Raycaster();
 
-    clock = new THREE.Clock(); 
-    delta = 0.0;
+    rot_angle = Math.PI / 2. * 0.01;
+
+    box_geometry = new THREE.BoxBufferGeometry(1,1,100);
+    box_material = new THREE.MeshBasicMaterial({color: '#FF0000'});
+    box = new THREE.Mesh(box_geometry,box_material);
+    box.position.set(0,0,0);
 
     nhash = new Math.seedrandom();
     hash = nhash();
- 
-    updateNoiseTex();
 
     mouse = new THREE.Vector2(0.0); 
     mouse_pressed = 0;
     mouse_held = 0;
-    swipe_dir = 0;
 
-    cam.position.set(0.0,0.0,5.0); 
+    cam.position.set(0.0,-450.,350.); 
     cam_target  = new THREE.Vector3(0.0);
 
-    controls = new THREE.OrbitControls(cam,canvas);
-
-        controls.minDistance = 1.0;
-        controls.maxDistance = 15.0;
-        controls.target = cam_target;
-        controls.enableDamping = true;
-        controls.enablePan = false; 
-        controls.enabled = true;
-
     scene = new THREE.Scene();
+
     geometry = new THREE.PlaneBufferGeometry(2,2);
-
-
 
     uniforms = {
 
@@ -76,10 +61,9 @@ function init() {
         "u_resolution"          : new THREE.Uniform(new THREE.Vector2(w,h)),
         "u_mouse"               : new THREE.Uniform(new THREE.Vector2()),
         "u_mouse_pressed"       : { value : mouse_pressed },
-        "u_swipe_dir"           : { value : swipe_dir }, 
+        "u_box"                 : new THREE.Uniform(new THREE.Vector3(box.position),
         "u_cam_target"          : new THREE.Uniform(new THREE.Vector3(cam_target)),
-        "u_hash"                : { value: hash },
-        "u_noise_tex"           : { type:"t", value: noise_texture }
+        "u_hash"                : { value: hash }
 
     };   
 
@@ -102,30 +86,26 @@ ShaderLoader("render.vert","render.frag",
         mesh = new THREE.Mesh(geometry,material);
 
         scene.add(mesh);
-       
-        
- 
+        scene.add(box);
+        box.add(cam);        
+
         renderer.setPixelRatio(window.devicePixelRatio);
         renderer.setSize(w,h);
 
         render = function(timestamp) {
-      
-        raycaster.setFromCamera(mouse,cam);
 
         requestAnimationFrame(render);
     
         uniforms["u_time"                ].value = performance.now();
         uniforms["u_mouse"               ].value = mouse;
         uniforms["u_mouse_pressed"       ].value = mouse_pressed;
-        uniforms["u_swipe_dir"           ].value = swipe_dir;
+        uniforms["u_box"                 ].value = box.position;
         uniforms["u_cam_target"          ].value = cam_target;
-        uniforms["u_hash"                ].value = hash;
-        uniforms["u_noise_tex"           ].value = noise_texture;       
+        uniforms["u_hash"                ].value = hash;      
 
-        controls.update();
+        box.update();
+
         renderer.render(scene,cam);
-
-    
 
         } 
        
@@ -134,48 +114,27 @@ ShaderLoader("render.vert","render.frag",
     }
 ) 
 
-function updateNoiseTex() {
-
-
-    tex_size = 16 * 16;
-    tex = new Uint8Array(3 * tex_size);
-
-        for(let i = 0; i < tex_size; i++) {
-                           
-         
-                let s =  i * 3;
-
-                tex[s]     = Math.floor( 255 * nhash()    );
-                tex[s+1]   = Math.floor( 255 * nhash()    );
-                tex[s+2]   = Math.floor( 255 * nhash()    );   
-                
-            }
-               
-
-     noise_texture = new THREE.DataTexture(tex,16,16,THREE.RGBFormat);
-     noise_texture.magFilter = THREE.LinearFilter;
-     console.log(noise_texture);
-}
-
 $('#canvas').keydown(function(event) {
  
+
     if(event.which == 37) {
         event.preventDefault(); 
-   
+        box.rotateOnAxis(new THREE.Vector3(0,0,1),rot_angle);
     }
 
     if(event.which == 38 ) {
         event.preventDefault();
-
+        box.translateY(2);
     }
     
     if(event.which == 39 ) {
         event.preventDefault();
-
+        box.rotatOnAxis(new THREE.Vector3(0,0,1),-rot_angle);
     }
 
     if(event.which == 40 ) {
         event.preventDefault();
+        box.translateY(-2);
 
     }
 

@@ -427,12 +427,11 @@ float t  = u_time;
 vec2 res = vec2(1.0,0.0);
 vec3 q = vec3(p);
 
-p = repeatLimit(p,3.,vec3(2.));
+p = repeat(p,vec3(1.));
 
-float boxes = box(p,vec3(  .75));
-float connectors = crossbox(p ,2.5,.25);
+float boxes = box(p,vec3(1.));
 
-res = vec2(smou(boxes,connectors,.25),1.);
+res = vec2(boxes,1.);
 
 return res;
 }
@@ -592,10 +591,8 @@ return col;
 
 void main() {
  
-vec3 cam_target = vec3(0.0);
-vec3 cam_pos = vec3(4.108,-10.5,4.77);
-cam_pos = vec3(5.,16.,5.);
-cam_pos.xy *= rot2(u_time * 0.0001);
+vec3 cam_target = u_cam_target;
+vec3 cam_pos = cameraPosition;
 
 vec2 uvu = -1.0 + 2.0 * uVu.xy;
 uvu.x *= u_resolution.x/u_resolution.y; 
