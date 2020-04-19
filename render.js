@@ -55,13 +55,13 @@ function init() {
     cam_target  = new THREE.Vector3(0.0);
 
     light = new THREE.PointLight(0x11,1,100);
-    light.position.set(hash()*100.,hash()*100.,hash()*100.);
+    light.position.set(hash*100.,hash*100.,hash*100.);
 
     light2 = new THREE.PointLight(0x11,1,100);
-    light2.position.set(hash()*100.,hash()*100.,hash()*100.);
+    light2.position.set(hash*100.,hash*100.,hash*100.);
 
     light3 = new THREE.PointLight(0x11,1,100);
-    light3.position.set(hash()*100.,hash()*100.,hash()*100.);
+    light3.position.set(hash*100.,hash*100.,hash*100.);
 
     quatern = new THREE.Quaternion();
     quatern2 = new THREE.Quaternion();

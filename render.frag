@@ -18,6 +18,10 @@ uniform vec2 u_resolution;
 
 uniform vec3 u_cam_target;
 
+uniform vec3 u_light_pos;
+uniform vec3 u_light2_pos;
+uniform vec3 u_light3_pos;
+
 uniform float u_time;
 
 uniform sampler2D u_noise_tex;
@@ -427,11 +431,11 @@ float t  = u_time;
 vec2 res = vec2(1.0,0.0);
 vec3 q = vec3(p);
 
-p = repeat(p,vec3(1.));
+q = repeat(p,vec3(1.));
 
-float boxes = box(p,vec3(1.));
+float box = box(p,vec3(1.));
 
-res = vec2(boxes,1.);
+res = vec2(box,1.);
 
 return res;
 }
@@ -557,8 +561,9 @@ vec3 p = ro + rd * d.x;
 
 vec3 n = calcNormal(p);
 
-vec3 lig = vec3(0.,100.,0. );
-vec3 lig2 = vec3(100.,0.,0.);
+vec3 lig = u_light_pos;
+vec3 lig2 = u_light2_pos;
+vec3 lig3 = u_light3_pos;
 
 float ns = 0.;
 float shininess = 10.;
@@ -576,6 +581,7 @@ if(d.y >= 1.) {
                            vec3(hash(111.),hash(122.),hash(133.)),
                            vec3(hash(95.),hash(121.),hash(35.)));
         
+        col += phongLight(ka,kd,ks,shininess,p,lig3,rd);
         col += phongLight(ka,kd,ks,shininess,p,lig2,rd);
         col += phongLight(ka,kd,ks,shininess,p,lig,rd);
         
