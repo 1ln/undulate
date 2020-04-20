@@ -596,9 +596,13 @@ return col;
 }
 
 void main() {
+
+float t = u_time;
  
 vec3 cam_target = u_cam_target;
 vec3 cam_pos = cameraPosition;
+cam_pos.xz *= rot2(0.001 * t); 
+
 
 vec2 uvu = -1.0 + 2.0 * uVu.xy;
 uvu.x *= u_resolution.x/u_resolution.y; 
