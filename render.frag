@@ -425,17 +425,17 @@ float crossbox(vec3 p,float l,float d) {
 
 vec2 scene(vec3 p) { 
 
-float s  = 0.0001;
 float t  = u_time;
 
 vec2 res = vec2(1.0,0.0);
 vec3 q = vec3(p);
 
-q = repeat(p,vec3(1.));
-
 float box = box(p,vec3(1.));
+float sphere = sphere(q,.25);
+float sb = mix(sphere,box,sin(0.00005*t)*noise(p +noise(p)*.25)*.25   +.5    );
 
-res = vec2(box,1.);
+
+res = vec2(sb,1.);
 
 return res;
 }
@@ -466,28 +466,6 @@ vec3 fog(vec3 c,vec3 fc,float b,float distance) {
     return mix(c,fc,depth);
 }
 
-float shadow(vec3 ro,vec3 rd,float dmin,float dmax) {
-
-    float res = 1.0;
-    float t = dmin;
-    float ph = 1e10;
-    
-    for(int i = 0; i < 6; i++ ) {
-        
-        float h = scene(ro + rd * t  ).x;
-
-        float s = clamp(8.0*h/t,0.0,1.0);
-        res = min(res,s*s*(3.-2. *s ));         
-        t += clamp(h,0.02,0.1 );
-    
-        if(res < 0.001 || t > dmax ) { break; }
-
-        }
-
-        return clamp(res,0.0,1.0);
-
-}
-
 vec3 calcNormal(vec3 p) {
 
     vec2 e = vec2(1.0,-1.0) * 0.0001;
@@ -510,10 +488,9 @@ vec3 phongModel(vec3 kd,vec3 ks,float alpha,vec3 p,vec3 cam_ray,vec3 light_pos,v
 
      vec3 v = normalize(cam_ray - p);
      vec3 r = normalize(reflect(-l,n));
-     vec3 h = normalize(l + v);
 
      float ln = clamp(dot(l,n),0.0,1.0);
-     float rv = dot(r,h);
+     float rv = dot(r,v);
 
      if(ln < 0.0) {
          return vec3(0.0);  
@@ -566,11 +543,11 @@ vec3 lig2 = u_light2_pos;
 vec3 lig3 = u_light3_pos;
 
 float ns = 0.;
-float shininess = 10.;
+float shininess = 1.;
 
-vec3 ka = vec3(0.2);
+vec3 ka = vec3(1.);
 vec3 ks = vec3(1.);
-vec3 kd = vec3(0.);
+vec3 kd = vec3(.5);
 
 if(d.y >= 1.) {
 
@@ -581,6 +558,7 @@ if(d.y >= 1.) {
                            vec3(hash(111.),hash(122.),hash(133.)),
                            vec3(hash(95.),hash(121.),hash(35.)));
         
+        ka = kd * .25;               
         col += phongLight(ka,kd,ks,shininess,p,lig3,rd);
         col += phongLight(ka,kd,ks,shininess,p,lig2,rd);
         col += phongLight(ka,kd,ks,shininess,p,lig,rd);
@@ -601,8 +579,10 @@ float t = u_time;
  
 vec3 cam_target = u_cam_target;
 vec3 cam_pos = cameraPosition;
-cam_pos.xz *= rot2(0.001 * t); 
+cam_pos = vec3(0.,0.,2.5);
 
+cam_pos.xz *= rot2(0.0005 * t); 
+cam_pos.yz *= rot2(0.0006 * t);
 
 vec2 uvu = -1.0 + 2.0 * uVu.xy;
 uvu.x *= u_resolution.x/u_resolution.y; 
