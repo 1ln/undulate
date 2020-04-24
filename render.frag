@@ -432,8 +432,8 @@ vec3 q = vec3(p);
 
 float box = box(p,vec3(1.));
 float sphere = sphere(q,.25);
-float sb = mix(sphere,box,sin(0.00005*t)*noise(p +noise(p)*.25)*.25   +.5    );
-
+float sb = mix(sphere,box,sin(0.0005*t)*.5+.5);
+sb += noise(p+noise(p)*.25+t*0.0005)*.25; 
 
 res = vec2(sb,1.);
 
@@ -562,8 +562,8 @@ if(d.y >= 1.) {
         col += phongLight(ka,kd,ks,shininess,p,lig3,rd);
         col += phongLight(ka,kd,ks,shininess,p,lig2,rd);
         col += phongLight(ka,kd,ks,shininess,p,lig,rd);
-        
-
+        col += fog(col,ks*ka,15.,5.);        
+     
 }
 
 if(d.x > 500. - 0.0001) {
@@ -582,7 +582,7 @@ vec3 cam_pos = cameraPosition;
 cam_pos = vec3(0.,0.,2.5);
 
 cam_pos.xz *= rot2(0.0005 * t); 
-cam_pos.yz *= rot2(0.0006 * t);
+cam_pos.yz *= rot2(easeOut3(0.000005 * t));
 
 vec2 uvu = -1.0 + 2.0 * uVu.xy;
 uvu.x *= u_resolution.x/u_resolution.y; 
