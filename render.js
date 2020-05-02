@@ -31,8 +31,8 @@ function init() {
     canvas  = $('#canvas')[0];
     context = canvas.getContext('webgl2',{ antialias:false });
 
-    w = window.innerWidth;
-    h = window.innerHeight;
+    w = 512;
+    h = 512;
 
     renderer = new THREE.WebGLRenderer({canvas:canvas,context:context});
 
@@ -145,7 +145,7 @@ $('#canvas').mousedown(function() {
     mouse_held = true; 
 
 
-    },5000);
+    },500);
 
 
 });
