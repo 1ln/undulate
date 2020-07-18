@@ -651,9 +651,18 @@ float level(vec3 p) {
     return smou(l,o,.5);
 }
 
+float undulate(vec3 p,float l) {
+    vec3 q = p;
+    
+    float sb = mix(sphere(p,.25),box(q,vec3(1.)),sin(l) *.5 + .5);
+    sb += n3(p + n3(p * .25 + l)) * .25;
+    return sb;
+}
+
 vec2 scene(vec3 p) { 
 
 vec2 res = vec2(1.0,0.0);
+float t = time;
 
 vec3 q = vec3(p); 
 
@@ -668,6 +677,8 @@ if(h.x < .45) {
 }
 
 res = opu(res,vec2(level(p),2.));
+res = opu(res,vec2(undulate(p,t * .0005),2.));
+
 
 return res;
 
