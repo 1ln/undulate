@@ -26,7 +26,6 @@ uniform vec3 target;
 uniform vec3 light;
 uniform float time;
 
-
 const float E    =  2.7182818;
 const float PI   =  radians(180.0); 
 const float PI2  =  PI * 2.;
@@ -639,6 +638,23 @@ float crossbox(vec3 p,float l,float d) {
     return min(b0,min(b1,b2));
 } 
 
+
+float randBoxes(vec3 p,float s,float l) {
+
+    vec3 q = p;
+    vec3 loc = floor(p/s);
+    
+    q.xz = mod(q.xz,s) - .5 * s;
+   
+    vec3 h = vec3(hash(loc.xz),hash(loc.y),hash(loc.xz));
+    
+    float box = box(p,vec3(1.));
+    if(h.x < l) {
+    return box;
+    }
+
+}
+
 float level(vec3 p) {
 
     vec3 pl = p;
@@ -646,7 +662,8 @@ float level(vec3 p) {
     p.y += ns2(p.xz * .005 + f(p.xz * .025,6) * .125) * 10.;
 
     float l = plane(p,vec4(0.,1.,0.,1.));
-    float o = pl.y + 1.;
+    float o = pl.y;
+
 
     return smou(l,o,.5);
 }
@@ -664,21 +681,9 @@ vec2 scene(vec3 p) {
 vec2 res = vec2(1.0,0.0);
 float t = time;
 
-vec3 q = vec3(p); 
-
-float s = 5.;
-vec3 loc = floor(p/s);
-q.xz = mod(q.xz,s) - .5 * s;
-
-vec3 h = vec3(hash(loc.xz),hash(loc.y),hash(loc.xz));
-
-if(h.x < .45) {
-//res = opu(res,vec2(box(q,vec3(1.)),1.));
-}
-
 res = opu(res,vec2(level(p),2.));
 res = opu(res,vec2(undulate(p,t * .0005),2.));
-
+res = opu(res,vec2(randBoxes(p,5.,.45),2.));
 
 return res;
 
@@ -889,12 +894,12 @@ function init() {
     renderer.setSize(w,h);
     
     cam = new THREE.PerspectiveCamera(0.,w/h,0.,1.);
-    cam.position.set(10.,25.,5.);
+    cam.position.set(0.,2.,5.);
 
     sphere = new THREE.SphereBufferGeometry();
     sphere_mat = new THREE.Material();
     target = new THREE.Mesh(sphere,sphere_mat);
-    target.position.set(10.,0.,10.);
+    target.position.set(0.,0.,0.);
     target.add(cam);
 
     cam.lookAt(target);
@@ -922,8 +927,8 @@ function init() {
 function render() {
 
     material.uniforms.res.value    = new THREE.Vector2(w,h);
-    material.uniforms.target.value = target;
-    material.uniforms.light.value  = new THREE.Vector3(light);
+    material.uniforms.target.value = target.position;
+    material.uniforms.light.value  = light.position;
     material.uniforms.time.value   = performance.now();
 
     renderer.render(scene,cam);
