@@ -23,18 +23,18 @@ varying vec2 uVu;
 
 uniform vec2 res;
 uniform vec3 target;
+uniform float fov;
 uniform vec3 light;
 uniform float time;
+uniform int steps;
+uniform float eps;
+uniform float dmin;
+uniform float dmax;
 
 const float E    =  2.7182818;
 const float PI   =  radians(180.0); 
 const float PI2  =  PI * 2.;
 const float PHI  =  (1.0 + sqrt(5.0)) / 2.0;
-
-const int steps = 250;
-float eps = 0.001;
-float dmin = 0.;
-float dmax = 1000.;
 
 const int shsteps = 16;
 float shmax = 5.;
@@ -638,6 +638,24 @@ float crossbox(vec3 p,float l,float d) {
     return min(b0,min(b1,b2));
 } 
 
+float sphereLog(vec3 p,float rotations) {
+
+    float scale = float(rotations) / PI;
+
+    vec2 h = p.xz;
+    float r = length(h);
+
+    h = vec2(log(r),atan(h.y,h.x));
+    h *= scale;
+    h = mod(h,2.) - 1.;
+    float mul = r/scale;
+  
+    float d = 0.;
+    d = sphere(vec3(h,p.y/mul),1.) * mul;
+
+    return d;
+
+}
 
 float randBoxes(vec3 p,float s,float l) {
 
@@ -681,9 +699,10 @@ vec2 scene(vec3 p) {
 vec2 res = vec2(1.0,0.0);
 float t = time;
 
-res = opu(res,vec2(level(p),2.));
-res = opu(res,vec2(undulate(p,t * .0005),2.));
-res = opu(res,vec2(randBoxes(p,5.,.45),2.));
+//res = opu(res,vec2(level(p),2.));
+//res = opu(res,vec2(undulate(p,t * .0005),2.));
+//res = opu(res,vec2(randBoxes(p,5.,.45),2.));
+res = opu(res,vec2(sphereLog(p,25.),2.));
 
 return res;
 
@@ -828,6 +847,8 @@ if(d.y == 2.) {
 col += vec3(.25);
 }
 
+//col = fmCol(p.y,difcol1,difcol2,difcol3,difcol4);
+
 col = col * linear;
 col += 5. * spe * vec3(.95);
 
@@ -845,7 +866,7 @@ vec3 cam_pos = cameraPosition;
 
 vec2 uvu = -1. + 2. * uVu.xy; 
 uvu.x *= res.x/res.y; 
-vec3 direction = rayCamDir(uvu,cam_pos,cam_tar,2.); 
+vec3 direction = rayCamDir(uvu,cam_pos,cam_tar,fov); 
 color = render(cam_pos,direction);  
 color = pow(color,vec3(.4545));      
 out_FragColor = vec4(color,1.0);
@@ -854,12 +875,24 @@ out_FragColor = vec4(color,1.0);
 `;
 
 let renderer,canvas,context;
+
 let uniforms;
+
 let scene,material,mesh;
+
 let plane,w,h; 
+
+let c;
+
 let cam,target;
 let sphere,sphere_mat;
+let fov;
+
 let light;
+
+let steps,eps,dmin,dmax;
+let shsteps,shmax,shblur;
+let fmcol1,fmcol2,fmcol3,fmcol4;
 
 init();
 render();
@@ -888,6 +921,7 @@ function init() {
     
         canvas : canvas,
         context : context
+
     });
 
     renderer.setPixelRatio(window.devicePixelRatio);
@@ -905,7 +939,9 @@ function init() {
     cam.lookAt(target);
 
     light = new THREE.PointLight();
-    light.position.set(0.,10.,0.);    
+    light.position.set(0.,10.,0.);
+
+    c = new THREE.Clock();
 
     material = new THREE.ShaderMaterial({
 
@@ -913,7 +949,13 @@ function init() {
            res    : new THREE.Uniform(new THREE.Vector2(w,h)),
            target : new THREE.Uniform(new THREE.Vector3(target)),
            light  : new THREE.Uniform(new THREE.Vector3(light)),
-           time   : { value : 1. }
+           time   : { value : 1. },
+           fov    : { value : 2. },
+           steps  : { value : 250. },
+           eps    : { value : 0.0001 },
+           dmin   : { value : 0. },
+           dmax   : { value : 500. } 
+
        },
        vertexShader   : vert,
        fragmentShader : frag
@@ -929,7 +971,7 @@ function render() {
     material.uniforms.res.value    = new THREE.Vector2(w,h);
     material.uniforms.target.value = target.position;
     material.uniforms.light.value  = light.position;
-    material.uniforms.time.value   = performance.now();
+    material.uniforms.time.value   = c.getDelta() / 1000;
 
     renderer.render(scene,cam);
     requestAnimationFrame(render);
