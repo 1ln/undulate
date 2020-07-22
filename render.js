@@ -888,11 +888,64 @@ let cam,target;
 let sphere,sphere_mat;
 let fov;
 
-let light;
+let pointlight;
 
-let steps,eps,dmin,dmax;
-let shsteps,shmax,shblur;
-let fmcol1,fmcol2,fmcol3,fmcol4;
+let render = {
+
+    steps : 250,
+    eps : 0.0001,
+    dmin : 0.,
+    dmax : 500.
+
+};
+
+let light = {
+
+    pos : [0.,10.,0.],
+    camAttach : false,
+    dif : [1.,1.,.5],
+    amb : [.05,.03,.04],
+    spe : [1.,1.,1.],
+    fres : [.5,.5,.5],
+    ref  : [1.,.5,1.],
+    shsteps : 16,
+    shmax : 2.,
+    shblur : 10.
+
+};
+
+let color = {
+
+    difa : [1.,0.,0.],
+    difb : [0.,0.,0.],
+    difc : [0.,0.,0.],
+    difd : [0.,0.,0.],
+    noise : false,
+    distort : false
+
+};
+
+let scene = {
+
+    spherelog : true,
+    randboxes : false,
+    undulate : false,
+    phisphere : false,
+    level : false
+
+};
+
+let gui = new dat.GUI();
+
+let renderfolder = gui.addFolder('render');
+let lightingfolder = gui.addFolder('lighting');
+let colorfolder = gui.addFolder('color');
+let scenefolder = gui.addFolder('scene');
+
+let spherelog = scenefolder.add(scene,'spherelog')
+.name('Sphere Log').listen().onChange(function() {
+setScene('spherelog')
+});
 
 init();
 render();
@@ -938,8 +991,8 @@ function init() {
 
     cam.lookAt(target);
 
-    light = new THREE.PointLight();
-    light.position.set(0.,10.,0.);
+    pointlight = new THREE.PointLight();
+    pointlight.position.set(0.,10.,0.);
 
     c = new THREE.Clock();
 
@@ -948,7 +1001,7 @@ function init() {
        uniforms : {
            res    : new THREE.Uniform(new THREE.Vector2(w,h)),
            target : new THREE.Uniform(new THREE.Vector3(target)),
-           light  : new THREE.Uniform(new THREE.Vector3(light)),
+           light  : new THREE.Uniform(new THREE.Vector3(pointlight)),
            time   : { value : 1. },
            fov    : { value : 2. },
            steps  : { value : 250. },
@@ -970,9 +1023,16 @@ function render() {
 
     material.uniforms.res.value    = new THREE.Vector2(w,h);
     material.uniforms.target.value = target.position;
-    material.uniforms.light.value  = light.position;
+    material.uniforms.light.value  = pointlight.position;
     material.uniforms.time.value   = c.getDelta() / 1000;
 
     renderer.render(scene,cam);
     requestAnimationFrame(render);
+}
+
+function setScene(prop) {
+    for(let param in scene) {
+        scene[param] = false;
+    }
+    scene[prop] = true;
 }
