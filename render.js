@@ -894,6 +894,7 @@ let render = {
 
     steps : 250,
     eps : 0.0001,
+    fov : 2.,
     dmin : 0.,
     dmax : 500.
 
@@ -901,7 +902,9 @@ let render = {
 
 let light = {
 
-    pos : [0.,10.,0.],
+    px : 10.,
+    py : 10.,
+    pz : 10.,
     camAttach : false,
     dif : [1.,1.,.5],
     amb : [.05,.03,.04],
@@ -930,7 +933,6 @@ let scene = {
     spherelog : true,
     randboxes : false,
     undulate : false,
-    phisphere : false,
     level : false
 
 };
@@ -938,14 +940,49 @@ let scene = {
 let gui = new dat.GUI();
 
 let renderfolder = gui.addFolder('render');
-let lightingfolder = gui.addFolder('lighting');
-let colorfolder = gui.addFolder('color');
+
+renderfolder.add(render,'steps',0,1000);
+renderfolder.add(render,'eps',0.0001);
+renderfolder.add(render,'fov',0.,125.);
+renderfolder.add(render,'dmin',0.,1000.);
+renderfolder.add(render,'dmax',0.,1000.);
+
+let lightfolder = gui.addFolder('light');
+
+lightfolder.add(light,'px',-100,100);
+lightfolder.add(light,'py',-100,100);
+lightfolder.add(light,'pz',-100,100);
+lightfolder.add(light,'camAttach');
+lightfolder.addColor(light,'dif');
+lightfolder.addColor(light,'amb');
+lightfolder.addColor(light,'spe');
+lightfolder.addColor(light,'fre');
+lightfolder.addColor(light,'ref');
+lightfolder.add(light,'shsteps',0,25);
+lightfolder.add(light,'shmax',0,10);
+lightfolder.add(light,'shblur',0,25);
+
 let scenefolder = gui.addFolder('scene');
 
 let spherelog = scenefolder.add(scene,'spherelog')
 .name('Sphere Log').listen().onChange(function() {
 setScene('spherelog')
 });
+
+let randboxes = scenefolder.add(scene,'randboxes')
+.name('Random Boxes').listen().onChange(function() {
+setScene('randboxes')
+});
+
+let undulate = scenefolder.add(scene,'undulate')
+.name('Undulate').listen().onChange(function() {
+setScene('undulate')
+});
+
+let level = scenefolder.add(scene,'level')
+.name('Level').listen().onChange(function() {
+setScene('level)
+}); 
 
 init();
 render();
@@ -992,22 +1029,31 @@ function init() {
     cam.lookAt(target);
 
     pointlight = new THREE.PointLight();
-    pointlight.position.set(0.,10.,0.);
+    pointlight.position.set(light.px,light.py,light.pz);
 
     c = new THREE.Clock();
 
     material = new THREE.ShaderMaterial({
 
        uniforms : {
+           
            res    : new THREE.Uniform(new THREE.Vector2(w,h)),
            target : new THREE.Uniform(new THREE.Vector3(target)),
            light  : new THREE.Uniform(new THREE.Vector3(pointlight)),
+           dif    : new THREE.Uniform(new THREE.Vector3(light.dif)),
+           amb    : new THREE.Uniform(new THREE.Vector3(light.amb)),
+           spe    : new THREE.Uniform(new THREE.Vector3(light.spe)),
+           fre    : new THREE.Uniform(new THREE.Vector3(light.fre)),
+           ref    : new THREE.Uniform(new THREE.Vector3(light.ref)),
            time   : { value : 1. },
-           fov    : { value : 2. },
-           steps  : { value : 250. },
-           eps    : { value : 0.0001 },
-           dmin   : { value : 0. },
-           dmax   : { value : 500. } 
+           fov    : { value : render.fov },
+           steps  : { value : render.steps },
+           eps    : { value : render.eps },
+           dmin   : { value : render.dmin },
+           dmax   : { value : render.dmax },
+           shsteps : { value : light.shsteps },
+           shmax   : { value : light.shmax },
+           shblur  : { value : light.shblur }
 
        },
        vertexShader   : vert,
