@@ -23,13 +23,28 @@ varying vec2 uVu;
 
 uniform vec2 res;
 uniform vec3 target;
+uniform int camattach;
 uniform float fov;
 uniform vec3 light;
+uniform float gamma;
 uniform float time;
 uniform int steps;
 uniform float eps;
 uniform float dmin;
 uniform float dmax;
+uniform vec3 dif;
+uniform vec3 amb;
+uniform vec3 spe;
+uniform vec3 fre;
+uniform vec3 ref;
+uniform int shsteps;
+uniform float shmax;
+uniform float shblur;
+
+uniform int logspheres;
+uniform int randboxes;
+uniform int level;
+uniform int undulate;
 
 const float E    =  2.7182818;
 const float PI   =  radians(180.0); 
@@ -1068,9 +1083,13 @@ function init() {
 function render() {
 
     material.uniforms.res.value    = new THREE.Vector2(w,h);
+    material.uniforms.dif.value = new THREE.Vector3(light.dif);
+    material.uniforms.amb.value = new THREE.Vector3(light.amb);
+    material.uniforms.spe.value = new THREE.Vector3(light.spe);
     material.uniforms.target.value = target.position;
     material.uniforms.light.value  = pointlight.position;
     material.uniforms.time.value   = c.getDelta() / 1000;
+    
 
     renderer.render(scene,cam);
     requestAnimationFrame(render);
