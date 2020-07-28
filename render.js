@@ -905,13 +905,19 @@ let fov;
 
 let pointlight;
 
-let render = {
+let cast = {
 
     steps : 250,
     eps : 0.0001,
-    fov : 2.,
     dmin : 0.,
     dmax : 500.
+
+};
+
+let camera = {
+
+    fov : 2.,
+    lightAttach : false
 
 };
 
@@ -920,7 +926,6 @@ let light = {
     px : 10.,
     py : 10.,
     pz : 10.,
-    camAttach : false,
     dif : [1.,1.,.5],
     amb : [.05,.03,.04],
     spe : [1.,1.,1.],
@@ -954,20 +959,23 @@ let scene = {
 
 let gui = new dat.GUI();
 
-let renderfolder = gui.addFolder('render');
+let castfolder = gui.addFolder('cast');
 
-renderfolder.add(render,'steps',0,1000);
-renderfolder.add(render,'eps',0.0001);
-renderfolder.add(render,'fov',0.,125.);
-renderfolder.add(render,'dmin',0.,1000.);
-renderfolder.add(render,'dmax',0.,1000.);
+castfolder.add(cast,'steps',0,1000).listen().onChange(updateUniforms);
+castfolder.add(cast,'eps',0.0001).listen( 
+castfolder.add(cast,'dmin',0.,1000.);
+castfolder.add(cast,'dmax',0.,1000.);
+
+let camerafolder = gui.addFolder('camera');
+
+camerafolder.add(camera,'fov',2.);
+camerafolder.add(camera,'lightAttach',false);
 
 let lightfolder = gui.addFolder('light');
 
 lightfolder.add(light,'px',-100,100);
 lightfolder.add(light,'py',-100,100);
 lightfolder.add(light,'pz',-100,100);
-lightfolder.add(light,'camAttach');
 lightfolder.addColor(light,'dif');
 lightfolder.addColor(light,'amb');
 lightfolder.addColor(light,'spe');
@@ -1052,20 +1060,25 @@ function init() {
 
        uniforms : {
            
-           res    : new THREE.Uniform(new THREE.Vector2(w,h)),
-           target : new THREE.Uniform(new THREE.Vector3(target)),
-           light  : new THREE.Uniform(new THREE.Vector3(pointlight)),
-           dif    : new THREE.Uniform(new THREE.Vector3(light.dif)),
-           amb    : new THREE.Uniform(new THREE.Vector3(light.amb)),
-           spe    : new THREE.Uniform(new THREE.Vector3(light.spe)),
-           fre    : new THREE.Uniform(new THREE.Vector3(light.fre)),
-           ref    : new THREE.Uniform(new THREE.Vector3(light.ref)),
-           time   : { value : 1. },
-           fov    : { value : render.fov },
-           steps  : { value : render.steps },
-           eps    : { value : render.eps },
-           dmin   : { value : render.dmin },
-           dmax   : { value : render.dmax },
+           spherelog : { value : scene.spherelog },
+           randboxes : { value : scene.randboxes },
+           level     : { value : scene.level },
+           undulate  : { value : scene.undulate } 
+
+           res     : new THREE.Uniform(new THREE.Vector2(w,h)),
+           target  : new THREE.Uniform(new THREE.Vector3(target)),
+           light   : new THREE.Uniform(new THREE.Vector3(pointlight)),
+           dif     : new THREE.Uniform(new THREE.Color().fromArray(light.dif)),
+           amb     : new THREE.Uniform(new THREE.Color().fromArray(light.amb)),
+           spe     : new THREE.Uniform(new THREE.Color().fromArray(light.spe)),
+           fre     : new THREE.Uniform(new THREE.Color().fromArray(light.fre)),
+           ref     : new THREE.Uniform(new THREE.Color().fromArray(light.ref)),
+           time    : { value : 1. },
+           fov     : { value : camera.fov },
+           steps   : { value : cast.steps },
+           eps     : { value : cast.eps },
+           dmin    : { value : cast.dmin },
+           dmax    : { value : cast.dmax },
            shsteps : { value : light.shsteps },
            shmax   : { value : light.shmax },
            shblur  : { value : light.shblur }
@@ -1080,24 +1093,45 @@ function init() {
 
 }
 
-function render() {
+function updateUniforms() {
 
-    material.uniforms.res.value    = new THREE.Vector2(w,h);
-    material.uniforms.dif.value = new THREE.Vector3(light.dif);
-    material.uniforms.amb.value = new THREE.Vector3(light.amb);
-    material.uniforms.spe.value = new THREE.Vector3(light.spe);
+    material.uniforms.spherelog = scene.spherelog;
+    material.uniforms.randboxes = scene.randboxes;
+    material.uniforms.level = scene.level;
+    material.uniforms.undulate = scene.undulate;
+
+    material.uniforms.dif.value = new THREE.Color().fromArray(light.dif);
+    material.uniforms.amb.value = new THREE.Color().fromArray(light.amb);
+    material.uniforms.spe.value = new THREE.Color().fromArray(light.spe);
+    material.uniforms.fre.value = new THREE.Color().fromArray(light.fre);
+    material.uniforms.ref.value = new THREE.Color().fromArray(light.ref);
     material.uniforms.target.value = target.position;
     material.uniforms.light.value  = pointlight.position;
-    material.uniforms.time.value   = c.getDelta() / 1000;
-    
+    material.uniforms.fov.value = camera.fov;
+    material.uniforms.steps.value = cast.steps;
+    material.uniforms.eps.value = cast.eps;
+    material.uniforms.dmin.value = cast.dmin;
+    material.uniforms.dmax.value = cast.dmax;
+    material.uniforms.shsteps.value = light.shsteps;
+    material.uniforms.shmax.value = light.shmax;
+    material.uniforms.shblur.value = light.shblur;
+
+}
+    function render() {
+
+    material.uniforms.res.value = new THREE.Vector2(w,h);
+    material.uniforms.time.value = c.getDelta() / 1000.;
 
     renderer.render(scene,cam);
     requestAnimationFrame(render);
+
 }
 
 function setScene(prop) {
+
     for(let param in scene) {
         scene[param] = false;
     }
     scene[prop] = true;
+
 }
