@@ -23,7 +23,6 @@ varying vec2 uVu;
 
 uniform vec2 res;
 uniform vec3 target;
-uniform int camattach;
 uniform float fov;
 uniform vec3 light;
 uniform float gamma;
@@ -32,16 +31,16 @@ uniform int steps;
 uniform float eps;
 uniform float dmin;
 uniform float dmax;
-uniform vec3 dif;
-uniform vec3 amb;
-uniform vec3 spe;
-uniform vec3 fre;
-uniform vec3 ref;
+uniform vec3 diffuse;
+uniform vec3 ambient;
+uniform vec3 specular;
+uniform vec3 fresnel;
+uniform vec3 reflection;
 uniform int shsteps;
 uniform float shmax;
 uniform float shblur;
 
-uniform int logspheres;
+uniform int spherelog;
 uniform int randboxes;
 uniform int level;
 uniform int undulate;
@@ -712,12 +711,24 @@ float undulate(vec3 p,float l) {
 vec2 scene(vec3 p) { 
 
 vec2 res = vec2(1.0,0.0);
+
 float t = time;
 
-//res = opu(res,vec2(level(p),2.));
-//res = opu(res,vec2(undulate(p,t * .0005),2.));
-//res = opu(res,vec2(randBoxes(p,5.,.45),2.));
+if(level == 1) {
+res = opu(res,vec2(level(p),2.));
+}
+
+if(undulate == 1) {
+res = opu(res,vec2(undulate(p,t * .0005),2.));
+}
+
+if(randboxes == 1) {
+res = opu(res,vec2(randBoxes(p,5.,.45),2.));
+}
+
+if(spherelog == 1) {
 res = opu(res,vec2(sphereLog(p,25.),2.));
+}
 
 return res;
 
@@ -849,10 +860,10 @@ vec3 linear = vec3(0.);
 dif *= shadow(p,l);
 ref *= shadow(p,r);
 
-linear += dif * vec3(.1);
-linear += amb * vec3(0.02);
-linear += ref * vec3(1.);
-linear += fre * vec3(1.);
+linear += dif * vec3(diffuse);
+linear += amb * vec3(ambient);
+linear += ref * vec3(reflection);
+linear += fre * vec3(fresnel);
 
 if(d.y == 1.) {
 col += vec3(.5);
@@ -865,7 +876,7 @@ col += vec3(.25);
 //col = fmCol(p.y,difcol1,difcol2,difcol3,difcol4);
 
 col = col * linear;
-col += 5. * spe * vec3(.95);
+col += 5. * spe * vec3(specular);
 
 }
 
@@ -961,29 +972,29 @@ let gui = new dat.GUI();
 
 let castfolder = gui.addFolder('cast');
 
-castfolder.add(cast,'steps',0,1000).listen().onChange(updateUniforms);
-castfolder.add(cast,'eps',0.0001).listen( 
-castfolder.add(cast,'dmin',0.,1000.);
-castfolder.add(cast,'dmax',0.,1000.);
+castfolder.add(cast,'steps',0,1000).onChange(updateUniforms);
+castfolder.add(cast,'eps',0.0001).onChange(updateUniforms); 
+castfolder.add(cast,'dmin',0.,1000).onChange(updateUniforms);
+castfolder.add(cast,'dmax',0.,1000.).onChange(updateUniforms);
 
 let camerafolder = gui.addFolder('camera');
 
-camerafolder.add(camera,'fov',2.);
-camerafolder.add(camera,'lightAttach',false);
+camerafolder.add(camera,'fov',2.).onChange(updateUniforms);
+camerafolder.add(camera,'lightAttach',false).onChange(updateUniforms);
 
 let lightfolder = gui.addFolder('light');
 
-lightfolder.add(light,'px',-100,100);
-lightfolder.add(light,'py',-100,100);
-lightfolder.add(light,'pz',-100,100);
-lightfolder.addColor(light,'dif');
-lightfolder.addColor(light,'amb');
-lightfolder.addColor(light,'spe');
-lightfolder.addColor(light,'fre');
-lightfolder.addColor(light,'ref');
-lightfolder.add(light,'shsteps',0,25);
-lightfolder.add(light,'shmax',0,10);
-lightfolder.add(light,'shblur',0,25);
+lightfolder.add(light,'px',-100,100).onChange(updateUniforms);
+lightfolder.add(light,'py',-100,100).onChange(updateUniforms);
+lightfolder.add(light,'pz',-100,100).onChange(updateUniforms);
+lightfolder.addColor(light,'dif').onChange(updateUniforms);
+lightfolder.addColor(light,'amb').onChange(updateUniforms);
+lightfolder.addColor(light,'spe').onChange(updateUniforms);
+lightfolder.addColor(light,'fre').onChange(updateUniforms);
+lightfolder.addColor(light,'ref').onChange(updateUniforms);
+lightfolder.add(light,'shsteps',0,25).onChange(updateUniforms);
+lightfolder.add(light,'shmax',0,10).onChange(updateUniforms);
+lightfolder.add(light,'shblur',0,25).onChange(updateUniforms);
 
 let scenefolder = gui.addFolder('scene');
 
@@ -1018,9 +1029,12 @@ function init() {
     context = canvas.getContext('webgl2');
     
     if(fullscreen) {
+
         w = window.innerWidth;
         h = window.innerHeight;
+
     } else {
+
         w = 512; h = w;
     } 
 
@@ -1060,28 +1074,28 @@ function init() {
 
        uniforms : {
            
-           spherelog : { value : scene.spherelog },
-           randboxes : { value : scene.randboxes },
-           level     : { value : scene.level },
-           undulate  : { value : scene.undulate } 
+           spherelog  : { value : scene.spherelog },
+           randboxes  : { value : scene.randboxes },
+           level      : { value : scene.level },
+           undulate   : { value : scene.undulate },
 
-           res     : new THREE.Uniform(new THREE.Vector2(w,h)),
-           target  : new THREE.Uniform(new THREE.Vector3(target)),
-           light   : new THREE.Uniform(new THREE.Vector3(pointlight)),
-           dif     : new THREE.Uniform(new THREE.Color().fromArray(light.dif)),
-           amb     : new THREE.Uniform(new THREE.Color().fromArray(light.amb)),
-           spe     : new THREE.Uniform(new THREE.Color().fromArray(light.spe)),
-           fre     : new THREE.Uniform(new THREE.Color().fromArray(light.fre)),
-           ref     : new THREE.Uniform(new THREE.Color().fromArray(light.ref)),
-           time    : { value : 1. },
-           fov     : { value : camera.fov },
-           steps   : { value : cast.steps },
-           eps     : { value : cast.eps },
-           dmin    : { value : cast.dmin },
-           dmax    : { value : cast.dmax },
-           shsteps : { value : light.shsteps },
-           shmax   : { value : light.shmax },
-           shblur  : { value : light.shblur }
+           res        : new THREE.Uniform(new THREE.Vector2(w,h)),
+           target     : new THREE.Uniform(new THREE.Vector3(target)),
+           light      : new THREE.Uniform(new THREE.Vector3(pointlight)),
+           diffuse    : new THREE.Uniform(new THREE.Color().fromArray(light.dif)),
+           ambient    : new THREE.Uniform(new THREE.Color().fromArray(light.amb)),
+           specular   : new THREE.Uniform(new THREE.Color().fromArray(light.spe)),
+           fresnel    : new THREE.Uniform(new THREE.Color().fromArray(light.fre)),
+           reflection : new THREE.Uniform(new THREE.Color().fromArray(light.ref)),
+           time       : { value : 1. },
+           fov        : { value : camera.fov },
+           steps      : { value : cast.steps },
+           eps        : { value : cast.eps },
+           dmin       : { value : cast.dmin },
+           dmax       : { value : cast.dmax },
+           shsteps    : { value : light.shsteps },
+           shmax      : { value : light.shmax },
+           shblur     : { value : light.shblur }
 
        },
        vertexShader   : vert,
@@ -1100,13 +1114,13 @@ function updateUniforms() {
     material.uniforms.level = scene.level;
     material.uniforms.undulate = scene.undulate;
 
-    material.uniforms.dif.value = new THREE.Color().fromArray(light.dif);
-    material.uniforms.amb.value = new THREE.Color().fromArray(light.amb);
-    material.uniforms.spe.value = new THREE.Color().fromArray(light.spe);
-    material.uniforms.fre.value = new THREE.Color().fromArray(light.fre);
-    material.uniforms.ref.value = new THREE.Color().fromArray(light.ref);
+    material.uniforms.diffuse.value = new THREE.Color().fromArray(light.dif);
+    material.uniforms.ambient.value = new THREE.Color().fromArray(light.amb);
+    material.uniforms.specular.value = new THREE.Color().fromArray(light.spe);
+    material.uniforms.fresnel.value = new THREE.Color().fromArray(light.fre);
+    material.uniforms.reflection.value = new THREE.Color().fromArray(light.ref);
     material.uniforms.target.value = target.position;
-    material.uniforms.light.value  = pointlight.position;
+    material.uniforms.light.value = pointlight.position;
     material.uniforms.fov.value = camera.fov;
     material.uniforms.steps.value = cast.steps;
     material.uniforms.eps.value = cast.eps;
