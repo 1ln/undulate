@@ -50,10 +50,6 @@ const float PI   =  radians(180.0);
 const float PI2  =  PI * 2.;
 const float PHI  =  (1.0 + sqrt(5.0)) / 2.0;
 
-const int shsteps = 16;
-float shmax = 5.;
-float shblur = 10.;  
-
 const float fog_distance = 0.0001;
 const float fog_density = 3.;
 
@@ -687,7 +683,7 @@ float randBoxes(vec3 p,float s,float l) {
 
 }
 
-float level(vec3 p) {
+float levels(vec3 p) {
 
     vec3 pl = p;
     
@@ -700,7 +696,7 @@ float level(vec3 p) {
     return smou(l,o,.5);
 }
 
-float undulate(vec3 p,float l) {
+float undulation(vec3 p,float l) {
     vec3 q = p;
     
     float sb = mix(sphere(p,.25),box(q,vec3(1.)),sin(l) *.5 + .5);
@@ -715,11 +711,11 @@ vec2 res = vec2(1.0,0.0);
 float t = time;
 
 if(level == 1) {
-res = opu(res,vec2(level(p),2.));
+res = opu(res,vec2(levels(p),2.));
 }
 
 if(undulate == 1) {
-res = opu(res,vec2(undulate(p,t * .0005),2.));
+res = opu(res,vec2(undulation(p,t * .0005),2.));
 }
 
 if(randboxes == 1) {
@@ -937,12 +933,12 @@ let light = {
     px : 10.,
     py : 10.,
     pz : 10.,
-    dif : [1.,1.,.5],
-    amb : [.05,.03,.04],
-    spe : [1.,1.,1.],
-    fres : [.5,.5,.5],
-    ref  : [1.,.5,1.],
-    shsteps : 16,
+    dif : [115.,100.,111.],
+    amb : [5.,2.,2.],
+    spe : [105.,100.,100.],
+    fre : [12.,24.,4.],
+    ref  : [1.,2.,1.],
+    shsteps : 16.,
     shmax : 2.,
     shblur : 10.
 
@@ -959,7 +955,7 @@ let color = {
 
 };
 
-let scene = {
+let demo = {
 
     spherelog : true,
     randboxes : false,
@@ -996,26 +992,26 @@ lightfolder.add(light,'shsteps',0,25).onChange(updateUniforms);
 lightfolder.add(light,'shmax',0,10).onChange(updateUniforms);
 lightfolder.add(light,'shblur',0,25).onChange(updateUniforms);
 
-let scenefolder = gui.addFolder('scene');
+let scenefolder = gui.addFolder('demo');
 
-let spherelog = scenefolder.add(scene,'spherelog')
+let spherelog = scenefolder.add(demo,'spherelog')
 .name('Sphere Log').listen().onChange(function() {
 setScene('spherelog')
 });
 
-let randboxes = scenefolder.add(scene,'randboxes')
+let randboxes = scenefolder.add(demo,'randboxes')
 .name('Random Boxes').listen().onChange(function() {
 setScene('randboxes')
 });
 
-let undulate = scenefolder.add(scene,'undulate')
+let undulate = scenefolder.add(demo,'undulate')
 .name('Undulate').listen().onChange(function() {
 setScene('undulate')
 });
 
-let level = scenefolder.add(scene,'level')
+let level = scenefolder.add(demo,'level')
 .name('Level').listen().onChange(function() {
-setScene('level)
+setScene('level')
 }); 
 
 init();
@@ -1074,10 +1070,10 @@ function init() {
 
        uniforms : {
            
-           spherelog  : { value : scene.spherelog },
-           randboxes  : { value : scene.randboxes },
-           level      : { value : scene.level },
-           undulate   : { value : scene.undulate },
+           spherelog  : { value : demo.spherelog },
+           randboxes  : { value : demo.randboxes },
+           level      : { value : demo.level },
+           undulate   : { value : demo.undulate },
 
            res        : new THREE.Uniform(new THREE.Vector2(w,h)),
            target     : new THREE.Uniform(new THREE.Vector3(target)),
@@ -1109,10 +1105,10 @@ function init() {
 
 function updateUniforms() {
 
-    material.uniforms.spherelog = scene.spherelog;
-    material.uniforms.randboxes = scene.randboxes;
-    material.uniforms.level = scene.level;
-    material.uniforms.undulate = scene.undulate;
+    material.uniforms.spherelog = demo.spherelog;
+    material.uniforms.randboxes = demo.randboxes;
+    material.uniforms.level = demo.level;
+    material.uniforms.undulate = demo.undulate;
 
     material.uniforms.diffuse.value = new THREE.Color().fromArray(light.dif);
     material.uniforms.ambient.value = new THREE.Color().fromArray(light.amb);
@@ -1143,9 +1139,9 @@ function updateUniforms() {
 
 function setScene(prop) {
 
-    for(let param in scene) {
-        scene[param] = false;
+    for(let param in demo) {
+        demo[param] = false;
     }
-    scene[prop] = true;
+    demo[prop] = true;
 
 }
