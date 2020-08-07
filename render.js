@@ -39,6 +39,10 @@ uniform vec3 reflection;
 uniform int shsteps;
 uniform float shmax;
 uniform float shblur;
+uniform vec3 difa;
+uniform vec3 difb;
+uniform vec3 difc;
+uniform vec3 difd;
 
 uniform int spherelog;
 uniform int randboxes;
@@ -856,10 +860,10 @@ vec3 linear = vec3(0.);
 dif *= shadow(p,l);
 ref *= shadow(p,r);
 
-linear += dif * vec3(diffuse);
-linear += amb * vec3(ambient);
-linear += ref * vec3(reflection);
-linear += fre * vec3(fresnel);
+linear += dif * normalize(vec3(diffuse));
+linear += amb * normalize(vec3(ambient));
+linear += ref * normalize(vec3(reflection));
+linear += fre * normalize(vec3(fresnel));
 
 if(d.y == 1.) {
 col += vec3(.5);
@@ -869,10 +873,10 @@ if(d.y == 2.) {
 col += vec3(.25);
 }
 
-//col = fmCol(p.y,difcol1,difcol2,difcol3,difcol4);
+//col = fmCol(p.y,difa,difb,difc,difd);
 
 col = col * linear;
-col += 5. * spe * vec3(specular);
+col += 5. * spe * normalize(vec3(specular));
 
 }
 
@@ -888,9 +892,12 @@ vec3 cam_pos = cameraPosition;
 
 vec2 uvu = -1. + 2. * uVu.xy; 
 uvu.x *= res.x/res.y; 
+
 vec3 direction = rayCamDir(uvu,cam_pos,cam_tar,fov); 
 color = render(cam_pos,direction);  
+
 color = pow(color,vec3(.4545));      
+
 out_FragColor = vec4(color,1.0);
 
 }
@@ -946,10 +953,10 @@ let light = {
 
 let color = {
 
-    difa : [1.,0.,0.],
-    difb : [0.,0.,0.],
-    difc : [0.,0.,0.],
-    difd : [0.,0.,0.],
+    difa : [15.,25.,15.],
+    difb : [100.,10.,25.],
+    difc : [25.,95.,15.],
+    difd : [0.,45.,15.],
     noise : false,
     distort : false
 
@@ -991,6 +998,12 @@ lightfolder.addColor(light,'ref').onChange(updateUniforms);
 lightfolder.add(light,'shsteps',0,25).onChange(updateUniforms);
 lightfolder.add(light,'shmax',0,10).onChange(updateUniforms);
 lightfolder.add(light,'shblur',0,25).onChange(updateUniforms);
+
+let colorfolder = gui.addFolder('color');
+colorfolder.addColor(color,'difa').onChange(updateUniforms);
+colorfolder.addColor(color,'difb').onChange(updateUniforms);
+colorfolder.addColor(color,'difc').onChange(updateUniforms);
+colorfolder.addColor(color,'difd').onChange(updateUniforms);
 
 let scenefolder = gui.addFolder('demo');
 
@@ -1105,10 +1118,10 @@ function init() {
 
 function updateUniforms() {
 
-    material.uniforms.spherelog = demo.spherelog;
-    material.uniforms.randboxes = demo.randboxes;
-    material.uniforms.level = demo.level;
-    material.uniforms.undulate = demo.undulate;
+    material.uniforms.spherelog.value = demo.spherelog;
+    material.uniforms.randboxes.value = demo.randboxes;
+    material.uniforms.level.value = demo.level;
+    material.uniforms.undulate.value = demo.undulate;
 
     material.uniforms.diffuse.value = new THREE.Color().fromArray(light.dif);
     material.uniforms.ambient.value = new THREE.Color().fromArray(light.amb);
@@ -1129,8 +1142,10 @@ function updateUniforms() {
 }
     function render() {
 
+    updateUniforms();
+
     material.uniforms.res.value = new THREE.Vector2(w,h);
-    material.uniforms.time.value = c.getDelta() / 1000.;
+    material.uniforms.time.value = performance.now();
 
     renderer.render(scene,cam);
     requestAnimationFrame(render);
