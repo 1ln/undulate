@@ -870,10 +870,13 @@ col += vec3(.5);
 }
 
 if(d.y == 2.) {
-col += vec3(.25);
+col = fmCol(p.y,normalize(difa),
+                normalize(difb),
+                normalize(difc),
+                normalize(difd));
 }
 
-//col = fmCol(p.y,difa,difb,difc,difd);
+col += n3(p);
 
 col = col * linear;
 col += 5. * spe * normalize(vec3(specular));
@@ -911,13 +914,9 @@ let scene,material,mesh;
 
 let plane,w,h; 
 
-let c;
-
 let cam,target;
 let sphere,sphere_mat;
 let fov;
-
-let pointlight;
 
 let cast = {
 
@@ -937,9 +936,6 @@ let camera = {
 
 let light = {
 
-    px : 10.,
-    py : 10.,
-    pz : 10.,
     dif : [115.,100.,111.],
     amb : [5.,2.,2.],
     spe : [105.,100.,100.],
@@ -956,16 +952,14 @@ let color = {
     difa : [15.,25.,15.],
     difb : [100.,10.,25.],
     difc : [25.,95.,15.],
-    difd : [0.,45.,15.],
-    noise : false,
-    distort : false
+    difd : [0.,45.,15.]
 
 };
 
 let demo = {
 
     spherelog : true,
-    randboxes : false,
+    boxes : false,
     undulate : false,
     level : false
 
@@ -987,9 +981,6 @@ camerafolder.add(camera,'lightAttach',false).onChange(updateUniforms);
 
 let lightfolder = gui.addFolder('light');
 
-lightfolder.add(light,'px',-100,100).onChange(updateUniforms);
-lightfolder.add(light,'py',-100,100).onChange(updateUniforms);
-lightfolder.add(light,'pz',-100,100).onChange(updateUniforms);
 lightfolder.addColor(light,'dif').onChange(updateUniforms);
 lightfolder.addColor(light,'amb').onChange(updateUniforms);
 lightfolder.addColor(light,'spe').onChange(updateUniforms);
@@ -1012,9 +1003,9 @@ let spherelog = scenefolder.add(demo,'spherelog')
 setScene('spherelog')
 });
 
-let randboxes = scenefolder.add(demo,'randboxes')
-.name('Random Boxes').listen().onChange(function() {
-setScene('randboxes')
+let boxes = scenefolder.add(demo,'boxes')
+.name('Boxes').listen().onChange(function() {
+setScene('boxes')
 });
 
 let undulate = scenefolder.add(demo,'undulate')
@@ -1072,30 +1063,29 @@ function init() {
     target.position.set(0.,0.,0.);
     target.add(cam);
 
-    cam.lookAt(target);
-
-    pointlight = new THREE.PointLight();
-    pointlight.position.set(light.px,light.py,light.pz);
-
-    c = new THREE.Clock();
-
+    cam.lookAt(target); 
+ 
     material = new THREE.ShaderMaterial({
 
        uniforms : {
            
            spherelog  : { value : demo.spherelog },
-           randboxes  : { value : demo.randboxes },
+           boxes      : { value : demo.boxes },
            level      : { value : demo.level },
            undulate   : { value : demo.undulate },
 
            res        : new THREE.Uniform(new THREE.Vector2(w,h)),
-           target     : new THREE.Uniform(new THREE.Vector3(target)),
-           light      : new THREE.Uniform(new THREE.Vector3(pointlight)),
            diffuse    : new THREE.Uniform(new THREE.Color().fromArray(light.dif)),
            ambient    : new THREE.Uniform(new THREE.Color().fromArray(light.amb)),
            specular   : new THREE.Uniform(new THREE.Color().fromArray(light.spe)),
            fresnel    : new THREE.Uniform(new THREE.Color().fromArray(light.fre)),
            reflection : new THREE.Uniform(new THREE.Color().fromArray(light.ref)),
+
+           difa : new THREE.Uniform(new THREE.Color().fromArray(color.difa)),
+           difb : new THREE.Uniform(new THREE.Color().fromArray(color.difb)),
+           difc : new THREE.Uniform(new THREE.Color().fromArray(color.difc)),
+           difd : new THREE.Uniform(new THREE.Color().fromArray(color.difd)),
+           
            time       : { value : 1. },
            fov        : { value : camera.fov },
            steps      : { value : cast.steps },
@@ -1119,7 +1109,7 @@ function init() {
 function updateUniforms() {
 
     material.uniforms.spherelog.value = demo.spherelog;
-    material.uniforms.randboxes.value = demo.randboxes;
+    material.uniforms.boxes.value = demo.boxes;
     material.uniforms.level.value = demo.level;
     material.uniforms.undulate.value = demo.undulate;
 
@@ -1128,8 +1118,12 @@ function updateUniforms() {
     material.uniforms.specular.value = new THREE.Color().fromArray(light.spe);
     material.uniforms.fresnel.value = new THREE.Color().fromArray(light.fre);
     material.uniforms.reflection.value = new THREE.Color().fromArray(light.ref);
-    material.uniforms.target.value = target.position;
-    material.uniforms.light.value = pointlight.position;
+  
+    material.uniforms.difa.value = new THREE.Color().fromArray(color.difa);
+    material.uniforms.difb.value = new THREE.Color().fromArray(color.difb);
+    material.uniforms.difc.value = new THREE.Color().fromArray(color.difc);
+    material.uniforms.difd.value = new THREE.Color().fromArray(color.difd);   
+
     material.uniforms.fov.value = camera.fov;
     material.uniforms.steps.value = cast.steps;
     material.uniforms.eps.value = cast.eps;
