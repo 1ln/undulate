@@ -213,7 +213,7 @@ float n3(vec3 x) {
                    mix(hash(  n + 270.0) , hash(   n + 271.0)   ,f.x),f.y),f.z);
 }
 
-float f(vec2 x,int octaves) {
+float f2(vec2 x,int octaves) {
 
     float f = 0.;
 
@@ -228,9 +228,29 @@ float f(vec2 x,int octaves) {
     return f * .5 + .5;
 }
 
-float sin2(vec2 p,float h) {
+float f3(vec3 x,int octaves,float hurst) {
+
+    float s = 0.;
+    float h = exp2(-hurst);
+    float f = 1.;
+    float a = .5;
+
+    for(int i = 0; i < octaves; i++) {
+
+        s += a * n3(f * x);  
+        f *= 2.;
+        a *= h;
+    }
+    return s;
+}
+
+float sin2(vec2 p,float s) {
     
-    return sin(p.x*h) * sin(p.y*h);
+    return sin(p.x*s) * sin(p.y*s);
+}
+
+float sin3(vec3 p,float s) {
+    return sin(p.x * s) * sin(p.y * s) * sin(p.z * s);
 }
 
 float fib(float n) {
@@ -650,7 +670,14 @@ float crossbox(vec3 p,float l,float d) {
     float b2 = box(p.zxy,vec3(d,d,l));
     
     return min(b0,min(b1,b2));
-} 
+}
+
+float moire(vec3 p) {
+
+     p = repeat(p + repeat(p,vec3(5.)) ,vec3(100.));
+     return box(p,vec3(1.));
+
+}
 
 float sphereLog(vec3 p,float rotations) {
 
@@ -670,6 +697,20 @@ float sphereLog(vec3 p,float rotations) {
     return d;
 
 }
+
+float menger(vec3 p) {
+
+    float b = box(p,vec3(1.));
+    float s = 0.;
+     
+    for(int i = 0; i < n; i++) {
+        vec3 a = mod(p,2.)-1.;
+        s *= 3.;
+        
+        float b0 = max(r.x,r.y);
+        float b1 = max(r.y,r.z);
+        float b2 = max(r.z,r.x);
+
 
 float randBoxes(vec3 p,float s,float l) {
 
@@ -691,7 +732,7 @@ float levels(vec3 p) {
 
     vec3 pl = p;
     
-    p.y += ns2(p.xz * .005 + f(p.xz * .025,6) * .125) * 10.;
+    p.y += ns2(p.xz * .005 + f2(p.xz * .025,6) * .125) * 10.;
 
     float l = plane(p,vec4(0.,1.,0.,1.));
     float o = pl.y;
