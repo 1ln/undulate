@@ -24,8 +24,9 @@ varying vec2 uVu;
 uniform vec2 res;
 uniform vec3 target;
 uniform float fov;
+uniform int seed;
 uniform vec3 light;
-uniform float gamma;
+uniform int gamma;
 uniform float time;
 uniform int steps;
 uniform float eps;
@@ -45,7 +46,11 @@ uniform vec3 difc;
 uniform vec3 difd;
 
 uniform int spherelog;
+uniform int boxes;
 uniform int randboxes;
+uniform int menger;
+uniform int moire;
+uniform int grid;
 uniform int level;
 uniform int undulate;
 
@@ -82,10 +87,6 @@ vec3 hash3(vec3 p) {
 
 vec2 uvd() {
    return gl_FragCoord.xy / res.xy;
-}
-
-vec2 grid(vec2 uv,float s) {
-    return fract(uv * s);
 }
 
 vec2 diag(vec2 uv) {
@@ -663,25 +664,34 @@ float octahedron(vec3 p,float s) {
     return length(vec3(q.x,q.y-s+k,q.z - k)); 
 }
 
-float crossbox(vec3 p,float l,float d) {
+vec2 scene(vec3 p) {
 
-    float b0 = box(p.xyz,vec3(l,d,d));
-    float b1 = box(p.yzx,vec3(d,l,d));
-    float b2 = box(p.zxy,vec3(d,d,l));
+vec2 res = vec2(1.,0.);
+float s = .001;
+float t = time;
+
+if(grid == 1) {
+
+    p = repeat(p,vec3(1.));
+
+    float b0 = box(p.xyz,vec3(1.,3.,3.));
+    float b1 = box(p.yzx,vec3(1.,3.,1.));
+    float b2 = box(p.zxy,vec3(1.,1.,3.));
     
-    return min(b0,min(b1,b2));
+    res = opu(res,vec2(min(b0,min(b1,b2)),2.));
+
 }
 
-float moire(vec3 p) {
+if(moire == 1) {
 
      p = repeat(p + repeat(p,vec3(5.)) ,vec3(100.));
-     return box(p,vec3(1.));
+     res = opu(res,vec2(box(p,vec3(1.)),2.));
 
 }
 
-float sphereLog(vec3 p,float rotations) {
+if(spherelog == 1) {
 
-    float scale = float(rotations) / PI;
+    float scale = float(45.) / PI;
 
     vec2 h = p.xz;
     float r = length(h);
@@ -693,42 +703,58 @@ float sphereLog(vec3 p,float rotations) {
   
     float d = 0.;
     d = sphere(vec3(h,p.y/mul),1.) * mul;
+    res = opu(res,vec2(d,2.));
+    
+}
 
-    return d;
+if(boxes == 1) {
+
+     p = repeatLimit(p,5.,vec3(2.));
+     res = opu(res,vec2(box(p,vec3(1.)),2.));
 
 }
 
-float menger(vec3 p) {
+if(menger == 1) {
 
     float b = box(p,vec3(1.));
-    float s = 0.;
+    float scale = 1.;
      
-    for(int i = 0; i < n; i++) {
+    for(int i = 0; i < 4; i++) {
+
         vec3 a = mod(p,2.)-1.;
-        s *= 3.;
-        
+        scale *= 3.;
+
+        vec3 r = abs(1. - 3. * abs(a)); 
+       
         float b0 = max(r.x,r.y);
         float b1 = max(r.y,r.z);
         float b2 = max(r.z,r.x);
 
+        float c = (min(b0,min(b1,b2)) - 1.)/scale;         
+        b = max(b,c);
+     }
 
-float randBoxes(vec3 p,float s,float l) {
+     res = opu(res,vec2(b,2.));
+}
+
+if(randboxes == 1) {
 
     vec3 q = p;
-    vec3 loc = floor(p/s);
-    
-    q.xz = mod(q.xz,s) - .5 * s;
-   
+    float scale = 10.;
+    vec3 loc = floor(p/scale);
+    q.xz = mod(q.xz,s) - .5 * scale;
+
     vec3 h = vec3(hash(loc.xz),hash(loc.y),hash(loc.xz));
     
-    float box = box(p,vec3(1.));
-    if(h.x < l) {
-    return box;
+    float b = box(p,vec3(1.));
+  
+    if(h.x < .5) {
+        res = opu(res,vec2(b,2.));
     }
 
 }
 
-float levels(vec3 p) {
+if(level == 1) {
 
     vec3 pl = p;
     
@@ -738,37 +764,17 @@ float levels(vec3 p) {
     float o = pl.y;
 
 
-    return smou(l,o,.5);
-}
-
-float undulation(vec3 p,float l) {
-    vec3 q = p;
-    
-    float sb = mix(sphere(p,.25),box(q,vec3(1.)),sin(l) *.5 + .5);
-    sb += n3(p + n3(p * .25 + l)) * .25;
-    return sb;
-}
-
-vec2 scene(vec3 p) { 
-
-vec2 res = vec2(1.0,0.0);
-
-float t = time;
-
-if(level == 1) {
-res = opu(res,vec2(levels(p),2.));
+    res = opu(res,vec2(smou(l,o,.5),2.));
 }
 
 if(undulate == 1) {
-res = opu(res,vec2(undulation(p,t * .0005),2.));
-}
 
-if(randboxes == 1) {
-res = opu(res,vec2(randBoxes(p,5.,.45),2.));
-}
+    vec3 q = p;
+    
+    float sb = mix(sphere(p,.25),box(q,vec3(1.)),sin(t * s) *.5 + .5);
+    sb += n3(p + n3(p * .25 + t * s)) * .25;
 
-if(spherelog == 1) {
-res = opu(res,vec2(sphereLog(p,25.),2.));
+    res = opu(res,vec2(sb,2.));
 }
 
 return res;
@@ -918,6 +924,7 @@ col = fmCol(p.y,normalize(difa),
 }
 
 col += n3(p);
+col += f3(p,5,.5);
 
 col = col * linear;
 col += 5. * spe * normalize(vec3(specular));
@@ -959,6 +966,9 @@ let cam,target;
 let sphere,sphere_mat;
 let fov;
 
+let r = new Math.seedrandom();
+let s = r.int32();
+
 let cast = {
 
     steps : 250,
@@ -993,7 +1003,13 @@ let color = {
     difa : [15.,25.,15.],
     difb : [100.,10.,25.],
     difc : [25.,95.,15.],
-    difd : [0.,45.,15.]
+    difd : [0.,45.,15.] 
+
+};
+
+let noise = {
+
+    seed : s 
 
 };
 
@@ -1002,7 +1018,11 @@ let demo = {
     spherelog : true,
     boxes : false,
     undulate : false,
-    level : false
+    level : false,
+    moire : false,
+    randboxes : false,
+    menger    : false,
+    grid      : false
 
 };
 
@@ -1037,6 +1057,9 @@ colorfolder.addColor(color,'difb').onChange(updateUniforms);
 colorfolder.addColor(color,'difc').onChange(updateUniforms);
 colorfolder.addColor(color,'difd').onChange(updateUniforms);
 
+let noisefolder = gui.addFolder('noise');
+noisefolder.add(noise,'seed').onChange(updateUniforms);
+
 let scenefolder = gui.addFolder('demo');
 
 let spherelog = scenefolder.add(demo,'spherelog')
@@ -1057,7 +1080,28 @@ setScene('undulate')
 let level = scenefolder.add(demo,'level')
 .name('Level').listen().onChange(function() {
 setScene('level')
-}); 
+});
+ 
+let moire = scenefolder.add(demo,'moire')
+.name('Moire').listen().onChange(function() {
+setScene('moire')
+});
+
+let randboxes = scenefolder.add(demo,'randboxes')
+.name('Rand Boxes').listen().onChange(function() {
+setScene('randboxes')
+});
+
+let menger = scenefolder.add(demo,'menger')
+.name('Menger').listen().onChange(function() {
+setScene('menger')
+});
+
+let grid = scenefolder.add(demo,'grid')
+.name('Grid').listen().onChange(function() {
+setScene('grid')
+});
+
 
 init();
 render();
@@ -1114,6 +1158,10 @@ function init() {
            boxes      : { value : demo.boxes },
            level      : { value : demo.level },
            undulate   : { value : demo.undulate },
+           grid       : { value : demo.grid },
+           moire      : { value : demo.moire },
+           menger     : { value : demo.menger },
+           randboxes  : { value : demo.randboxes },
 
            res        : new THREE.Uniform(new THREE.Vector2(w,h)),
            diffuse    : new THREE.Uniform(new THREE.Color().fromArray(light.dif)),
@@ -1128,6 +1176,7 @@ function init() {
            difd : new THREE.Uniform(new THREE.Color().fromArray(color.difd)),
            
            time       : { value : 1. },
+           seed       : { value : noise.seed },
            fov        : { value : camera.fov },
            steps      : { value : cast.steps },
            eps        : { value : cast.eps },
@@ -1153,6 +1202,10 @@ function updateUniforms() {
     material.uniforms.boxes.value = demo.boxes;
     material.uniforms.level.value = demo.level;
     material.uniforms.undulate.value = demo.undulate;
+    material.uniforms.moire.value = demo.moire;
+    material.uniforms.randboxes.value = demo.randboxes;
+    material.uniforms.menger.value = demo.menger;
+    material.uniforms.grid.value = demo.grid; 
 
     material.uniforms.diffuse.value = new THREE.Color().fromArray(light.dif);
     material.uniforms.ambient.value = new THREE.Color().fromArray(light.amb);
@@ -1165,6 +1218,7 @@ function updateUniforms() {
     material.uniforms.difc.value = new THREE.Color().fromArray(color.difc);
     material.uniforms.difd.value = new THREE.Color().fromArray(color.difd);   
 
+    material.uniforms.seed.value = noise.seed;
     material.uniforms.fov.value = camera.fov;
     material.uniforms.steps.value = cast.steps;
     material.uniforms.eps.value = cast.eps;
