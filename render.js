@@ -32,7 +32,6 @@ uniform int steps;
 uniform float eps;
 uniform float dmin;
 uniform float dmax;
-uniform vec3 diffuse;
 uniform vec3 ambient;
 uniform vec3 specular;
 uniform vec3 fresnel;
@@ -67,19 +66,19 @@ vec3 mod289(vec3 p) { return p - floor(p * (1. / 289.)) * 289.; }
 vec3 permute(vec3 p) { return mod289(((p * 34.) + 1.) * p); } 
 
 float hash(float p) {
-    uvec2 n = uint(int(p)) * uvec2(1391674541U,2531151992.0);
-    uint h = (n.x ^ n.y) * 1391674541U;
+    uvec2 n = uint(int(p)) * uvec2(uint(int(seed)),2531151992.0);
+    uint h = (n.x ^ n.y) * uint(int(seed));
     return float(h) * (1./float(0xffffffffU));
 }
 
 float hash(vec2 p) {
-    uvec2 n = uvec2(ivec2(p)) * uvec2(1391674541U,2531151992.0);
-    uint h = (n.x ^ n.y) * 1391674541U;
+    uvec2 n = uvec2(ivec2(p)) * uvec2(uint(int(seed)),2531151992.0);
+    uint h = (n.x ^ n.y) * uint(int(seed));
     return float(h) * (1./float(0xffffffffU));
 }
 
 vec3 hash3(vec3 p) {
-   uvec3 h = uvec3(ivec3(  p)) *  uvec3(1391674541U,2531151992.0,2860486313U);
+   uvec3 h = uvec3(ivec3(  p)) *  uvec3(uint(int(seed)),2531151992.0,2860486313U);
    h = (h.x ^ h.y ^ h.z) * uvec3(1391674541U,2531151992U,2860486313U);
    return vec3(h) * (1.0/float(0xffffffffU));
 
@@ -672,11 +671,12 @@ float t = time;
 
 if(grid == 1) {
 
-    p = repeat(p,vec3(1.));
+    p = repeat(p,vec3(5.));
 
-    float b0 = box(p.xyz,vec3(1.,3.,3.));
-    float b1 = box(p.yzx,vec3(1.,3.,1.));
-    float b2 = box(p.zxy,vec3(1.,1.,3.));
+    float e = 1e10;
+    float b0 = box(p.xyz,vec3(1.,e,e));
+    float b1 = box(p.yzx,vec3(e,1.,e));
+    float b2 = box(p.zxy,vec3(e,e,1.));
     
     res = opu(res,vec2(min(b0,min(b1,b2)),2.));
 
@@ -684,14 +684,14 @@ if(grid == 1) {
 
 if(moire == 1) {
 
-     p = repeat(p + repeat(p,vec3(5.)) ,vec3(100.));
+     p = repeat(p + repeat(p,vec3(5.)) ,vec3(45.));
      res = opu(res,vec2(box(p,vec3(1.)),2.));
 
 }
 
 if(spherelog == 1) {
 
-    float scale = float(45.) / PI;
+    float scale = float(hash(100.)*100. + 15.) / PI;
 
     vec2 h = p.xz;
     float r = length(h);
@@ -709,7 +709,7 @@ if(spherelog == 1) {
 
 if(boxes == 1) {
 
-     p = repeatLimit(p,5.,vec3(2.));
+     p = repeatLimit(p,floor(hash(10.)*100.),vec3(floor(hash(15.)*100.)));
      res = opu(res,vec2(box(p,vec3(1.)),2.));
 
 }
@@ -721,7 +721,7 @@ if(menger == 1) {
      
     for(int i = 0; i < 4; i++) {
 
-        vec3 a = mod(p,2.)-1.;
+        vec3 a = mod(p * scale,2.)-1.;
         scale *= 3.;
 
         vec3 r = abs(1. - 3. * abs(a)); 
@@ -763,13 +763,14 @@ if(level == 1) {
     float l = plane(p,vec4(0.,1.,0.,1.));
     float o = pl.y;
 
-
     res = opu(res,vec2(smou(l,o,.5),2.));
 }
 
 if(undulate == 1) {
 
     vec3 q = p;
+    
+    p.xz *= rot2(t * s);
     
     float sb = mix(sphere(p,.25),box(q,vec3(1.)),sin(t * s) *.5 + .5);
     sb += n3(p + n3(p * .25 + t * s)) * .25;
@@ -907,7 +908,7 @@ vec3 linear = vec3(0.);
 dif *= shadow(p,l);
 ref *= shadow(p,r);
 
-linear += dif * normalize(vec3(diffuse));
+linear += dif * normalize(vec3(.5));
 linear += amb * normalize(vec3(ambient));
 linear += ref * normalize(vec3(reflection));
 linear += fre * normalize(vec3(fresnel));
@@ -987,23 +988,17 @@ let camera = {
 
 let light = {
 
-    dif : [115.,100.,111.],
-    amb : [5.,2.,2.],
-    spe : [105.,100.,100.],
-    fre : [12.,24.,4.],
-    ref  : [1.,2.,1.],
+    amb : [r()*255,r()*255,r()*255],
+    spe : [r()*255,r()*255,r()*255],
+    fre : [r()*255,r()*255,r()*255],
+    ref  : [r()*255,r()*255,r()*255],
     shsteps : 16.,
     shmax : 2.,
-    shblur : 10.
-
-};
-
-let color = {
-
-    difa : [15.,25.,15.],
-    difb : [100.,10.,25.],
-    difc : [25.,95.,15.],
-    difd : [0.,45.,15.] 
+    shblur : 10.,
+    difa : [r()*255,r()*255,r()*255],
+    difb : [r()*255,r()*255,r()*255],
+    difc : [r()*255,r()*255,r()*255],
+    difd : [r()*255,r()*255,r()*255] 
 
 };
 
@@ -1042,7 +1037,6 @@ camerafolder.add(camera,'lightAttach',false).onChange(updateUniforms);
 
 let lightfolder = gui.addFolder('light');
 
-lightfolder.addColor(light,'dif').onChange(updateUniforms);
 lightfolder.addColor(light,'amb').onChange(updateUniforms);
 lightfolder.addColor(light,'spe').onChange(updateUniforms);
 lightfolder.addColor(light,'fre').onChange(updateUniforms);
@@ -1050,12 +1044,10 @@ lightfolder.addColor(light,'ref').onChange(updateUniforms);
 lightfolder.add(light,'shsteps',0,25).onChange(updateUniforms);
 lightfolder.add(light,'shmax',0,10).onChange(updateUniforms);
 lightfolder.add(light,'shblur',0,25).onChange(updateUniforms);
-
-let colorfolder = gui.addFolder('color');
-colorfolder.addColor(color,'difa').onChange(updateUniforms);
-colorfolder.addColor(color,'difb').onChange(updateUniforms);
-colorfolder.addColor(color,'difc').onChange(updateUniforms);
-colorfolder.addColor(color,'difd').onChange(updateUniforms);
+lightfolder.addColor(light,'difa').onChange(updateUniforms);
+lightfolder.addColor(light,'difb').onChange(updateUniforms);
+lightfolder.addColor(light,'difc').onChange(updateUniforms);
+lightfolder.addColor(light,'difd').onChange(updateUniforms);
 
 let noisefolder = gui.addFolder('noise');
 noisefolder.add(noise,'seed').onChange(updateUniforms);
@@ -1164,16 +1156,15 @@ function init() {
            randboxes  : { value : demo.randboxes },
 
            res        : new THREE.Uniform(new THREE.Vector2(w,h)),
-           diffuse    : new THREE.Uniform(new THREE.Color().fromArray(light.dif)),
            ambient    : new THREE.Uniform(new THREE.Color().fromArray(light.amb)),
            specular   : new THREE.Uniform(new THREE.Color().fromArray(light.spe)),
            fresnel    : new THREE.Uniform(new THREE.Color().fromArray(light.fre)),
            reflection : new THREE.Uniform(new THREE.Color().fromArray(light.ref)),
 
-           difa : new THREE.Uniform(new THREE.Color().fromArray(color.difa)),
-           difb : new THREE.Uniform(new THREE.Color().fromArray(color.difb)),
-           difc : new THREE.Uniform(new THREE.Color().fromArray(color.difc)),
-           difd : new THREE.Uniform(new THREE.Color().fromArray(color.difd)),
+           difa : new THREE.Uniform(new THREE.Color().fromArray(light.difa)),
+           difb : new THREE.Uniform(new THREE.Color().fromArray(light.difb)),
+           difc : new THREE.Uniform(new THREE.Color().fromArray(light.difc)),
+           difd : new THREE.Uniform(new THREE.Color().fromArray(light.difd)),
            
            time       : { value : 1. },
            seed       : { value : noise.seed },
@@ -1207,16 +1198,14 @@ function updateUniforms() {
     material.uniforms.menger.value = demo.menger;
     material.uniforms.grid.value = demo.grid; 
 
-    material.uniforms.diffuse.value = new THREE.Color().fromArray(light.dif);
     material.uniforms.ambient.value = new THREE.Color().fromArray(light.amb);
     material.uniforms.specular.value = new THREE.Color().fromArray(light.spe);
     material.uniforms.fresnel.value = new THREE.Color().fromArray(light.fre);
     material.uniforms.reflection.value = new THREE.Color().fromArray(light.ref);
-  
-    material.uniforms.difa.value = new THREE.Color().fromArray(color.difa);
-    material.uniforms.difb.value = new THREE.Color().fromArray(color.difb);
-    material.uniforms.difc.value = new THREE.Color().fromArray(color.difc);
-    material.uniforms.difd.value = new THREE.Color().fromArray(color.difd);   
+    material.uniforms.difa.value = new THREE.Color().fromArray(light.difa);
+    material.uniforms.difb.value = new THREE.Color().fromArray(light.difb);
+    material.uniforms.difc.value = new THREE.Color().fromArray(light.difc);
+    material.uniforms.difd.value = new THREE.Color().fromArray(light.difd);   
 
     material.uniforms.seed.value = noise.seed;
     material.uniforms.fov.value = camera.fov;
