@@ -25,7 +25,7 @@ uniform vec2 res;
 uniform vec3 target;
 uniform float fov;
 uniform int seed;
-uniform vec3 light;
+uniform int octaves;
 uniform int gamma;
 uniform float time;
 uniform int steps;
@@ -79,7 +79,7 @@ float hash(vec2 p) {
 
 vec3 hash3(vec3 p) {
    uvec3 h = uvec3(ivec3(  p)) *  uvec3(uint(int(seed)),2531151992.0,2860486313U);
-   h = (h.x ^ h.y ^ h.z) * uvec3(1391674541U,2531151992U,2860486313U);
+   h = (h.x ^ h.y ^ h.z) * uvec3(uint(int(seed)),2531151992U,2860486313U);
    return vec3(h) * (1.0/float(0xffffffffU));
 
 }
@@ -213,7 +213,7 @@ float n3(vec3 x) {
                    mix(hash(  n + 270.0) , hash(   n + 271.0)   ,f.x),f.y),f.z);
 }
 
-float f2(vec2 x,int octaves) {
+float f2(vec2 x) {
 
     float f = 0.;
 
@@ -228,7 +228,7 @@ float f2(vec2 x,int octaves) {
     return f * .5 + .5;
 }
 
-float f3(vec3 x,int octaves,float hurst) {
+float f3(vec3 x,float hurst) {
 
     float s = 0.;
     float h = exp2(-hurst);
@@ -674,9 +674,9 @@ if(grid == 1) {
     p = repeat(p,vec3(5.));
 
     float e = 1e10;
-    float b0 = box(p.xyz,vec3(1.,e,e));
-    float b1 = box(p.yzx,vec3(e,1.,e));
-    float b2 = box(p.zxy,vec3(e,e,1.));
+    float b0 = box(p.xyz,vec3(e,1.,1.));
+    float b1 = box(p.yzx,vec3(1.,e,1.));
+    float b2 = box(p.zxy,vec3(1.,1.,e));
     
     res = opu(res,vec2(min(b0,min(b1,b2)),2.));
 
@@ -684,8 +684,8 @@ if(grid == 1) {
 
 if(moire == 1) {
 
-     p = repeat(p + repeat(p,vec3(5.)) ,vec3(45.));
-     res = opu(res,vec2(box(p,vec3(1.)),2.));
+    p = repeat(p + repeat(p,vec3(5.)) ,vec3(45.)); 
+    res = opu(res,vec2(box(p,vec3(1.)),2.));
 
 }
 
@@ -758,7 +758,7 @@ if(level == 1) {
 
     vec3 pl = p;
     
-    p.y += ns2(p.xz * .005 + f2(p.xz * .025,6) * .125) * 10.;
+    p.y += ns2(p.xz * .005 + f2(p.xz * .025) * .125) * 10.;
 
     float l = plane(p,vec4(0.,1.,0.,1.));
     float o = pl.y;
@@ -895,7 +895,7 @@ if(d.y >= 0.) {
 
 vec3 p = ro + rd * d.x;
 vec3 n = calcNormal(p);
-vec3 l = normalize(light);
+vec3 l = normalize(vec3(0.,10.,0.));
 vec3 h = normalize(l - rd);
 vec3 r = reflect(rd,n);
 float amb = sqrt(clamp(0.5 + 0.5 * n.y,0.0,1.0));
@@ -913,10 +913,6 @@ linear += amb * normalize(vec3(ambient));
 linear += ref * normalize(vec3(reflection));
 linear += fre * normalize(vec3(fresnel));
 
-if(d.y == 1.) {
-col += vec3(.5);
-}
-
 if(d.y == 2.) {
 col = fmCol(p.y,normalize(difa),
                 normalize(difb),
@@ -924,8 +920,17 @@ col = fmCol(p.y,normalize(difa),
                 normalize(difd));
 }
 
+if(hash(115.) < hash(25.)) {
 col += n3(p);
-col += f3(p,5,.5);
+}
+
+if(hash(12.) < hash(10.)) {
+col += f3(p,hash(122.));
+}
+
+if(hash(35.) < hash(95.)) {
+col += f3(p+f3(p+f3(p,.5),.5),.5);
+}
 
 col = col * linear;
 col += 5. * spe * normalize(vec3(specular));
@@ -973,7 +978,7 @@ let s = r.int32();
 let cast = {
 
     steps : 250,
-    eps : 0.0001,
+    eps : 0.001,
     dmin : 0.,
     dmax : 500.
 
@@ -1004,8 +1009,9 @@ let light = {
 
 let noise = {
 
-    seed : s 
-
+    seed : s,
+    octaves : 4
+      
 };
 
 let demo = {
@@ -1051,6 +1057,7 @@ lightfolder.addColor(light,'difd').onChange(updateUniforms);
 
 let noisefolder = gui.addFolder('noise');
 noisefolder.add(noise,'seed').onChange(updateUniforms);
+noisefolder.add(noise,'octaves').onChange(updateUniforms);
 
 let scenefolder = gui.addFolder('demo');
 
@@ -1145,7 +1152,7 @@ function init() {
     material = new THREE.ShaderMaterial({
 
        uniforms : {
-           
+    
            spherelog  : { value : demo.spherelog },
            boxes      : { value : demo.boxes },
            level      : { value : demo.level },
@@ -1160,7 +1167,6 @@ function init() {
            specular   : new THREE.Uniform(new THREE.Color().fromArray(light.spe)),
            fresnel    : new THREE.Uniform(new THREE.Color().fromArray(light.fre)),
            reflection : new THREE.Uniform(new THREE.Color().fromArray(light.ref)),
-
            difa : new THREE.Uniform(new THREE.Color().fromArray(light.difa)),
            difb : new THREE.Uniform(new THREE.Color().fromArray(light.difb)),
            difc : new THREE.Uniform(new THREE.Color().fromArray(light.difc)),
@@ -1168,6 +1174,7 @@ function init() {
            
            time       : { value : 1. },
            seed       : { value : noise.seed },
+           octaves    : { value : noise.octaves },
            fov        : { value : camera.fov },
            steps      : { value : cast.steps },
            eps        : { value : cast.eps },
@@ -1208,6 +1215,7 @@ function updateUniforms() {
     material.uniforms.difd.value = new THREE.Color().fromArray(light.difd);   
 
     material.uniforms.seed.value = noise.seed;
+    material.uniforms.octaves.value = noise.octaves; 
     material.uniforms.fov.value = camera.fov;
     material.uniforms.steps.value = cast.steps;
     material.uniforms.eps.value = cast.eps;
