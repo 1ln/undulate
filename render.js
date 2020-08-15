@@ -32,6 +32,7 @@ uniform int steps;
 uniform float eps;
 uniform float dmin;
 uniform float dmax;
+uniform vec3 diffuse;
 uniform vec3 ambient;
 uniform vec3 specular;
 uniform vec3 fresnel;
@@ -39,10 +40,6 @@ uniform vec3 reflection;
 uniform int shsteps;
 uniform float shmax;
 uniform float shblur;
-uniform vec3 difa;
-uniform vec3 difb;
-uniform vec3 difc;
-uniform vec3 difd;
 
 uniform int spherelog;
 uniform int boxes;
@@ -889,7 +886,7 @@ vec3 render(vec3 ro,vec3 rd) {
  
 vec2 d = rayScene(ro, rd);
 
-vec3 col = vec3(0.);
+vec3 col = vec3(1.);
 
 if(d.y >= 0.) {
 
@@ -898,38 +895,40 @@ vec3 n = calcNormal(p);
 vec3 l = normalize(vec3(0.,10.,0.));
 vec3 h = normalize(l - rd);
 vec3 r = reflect(rd,n);
+
 float amb = sqrt(clamp(0.5 + 0.5 * n.y,0.0,1.0));
 float dif = clamp(dot(n,l),0.0,1.0);
 float spe = pow(clamp(dot(n,h),0.0,1.0),16.) * dif * (.04 + 0.9 * pow(clamp(1. + dot(h,rd),0.,1.),5.));
 float fre = pow(clamp(1. + dot(n,rd),0.0,1.0),2.0);
 float ref = smoothstep(-.2,.2,r.y);
-vec3 linear = vec3(0.);
+vec3 linear = vec3(0.1);
 
 dif *= shadow(p,l);
 ref *= shadow(p,r);
 
-linear += dif * normalize(vec3(.5));
+linear += dif * normalize(vec3(diffuse));
 linear += amb * normalize(vec3(ambient));
 linear += ref * normalize(vec3(reflection));
 linear += fre * normalize(vec3(fresnel));
 
 if(d.y == 2.) {
-col = fmCol(p.y,normalize(difa),
-                normalize(difb),
-                normalize(difc),
-                normalize(difd));
+
+float lev = n3(p);
+float n = 0.;
+
+if(hash(115.) < lev) {  
+n += f3(p,hash(122.));
 }
 
-if(hash(115.) < hash(25.)) {
-col += n3(p);
-}
+if(hash(35.) < lev) {
+n += f3(p+f3(p,.5),.5);
+} 
 
-if(hash(12.) < hash(10.)) {
-col += f3(p,hash(122.));
-}
-
-if(hash(35.) < hash(95.)) {
-col += f3(p+f3(p+f3(p,.5),.5),.5);
+col += fmCol(n,vec3(hash(112.),hash(33.),hash(21.)),
+                vec3(hash(12.),hash(105.),hash(156.)),
+                vec3(hash(32.),hash(123.),hash(25.)),
+                vec3(hash(10.),hash(15.),hash(27.)));               
+                        
 }
 
 col = col * linear;
@@ -953,7 +952,9 @@ uvu.x *= res.x/res.y;
 vec3 direction = rayCamDir(uvu,cam_pos,cam_tar,fov); 
 color = render(cam_pos,direction);  
 
+if(gamma == 1) {  
 color = pow(color,vec3(.4545));      
+}
 
 out_FragColor = vec4(color,1.0);
 
@@ -968,7 +969,7 @@ let scene,material,mesh;
 
 let plane,w,h; 
 
-let cam,target;
+let cam,controls,target;
 let sphere,sphere_mat;
 let fov;
 
@@ -987,23 +988,21 @@ let cast = {
 let camera = {
 
     fov : 2.,
-    lightAttach : false
+    orbitcontrols : false
 
 };
 
 let light = {
 
-    amb : [r()*255,r()*255,r()*255],
-    spe : [r()*255,r()*255,r()*255],
-    fre : [r()*255,r()*255,r()*255],
-    ref  : [r()*255,r()*255,r()*255],
+    dif  : [100.,225.,10.],
+    amb  : [5,2,1],
+    spe  : [255,255,255],
+    fre  : [255,25,25],
+    ref  : [25,255,25],
+    gamma : true,
     shsteps : 16.,
     shmax : 2.,
-    shblur : 10.,
-    difa : [r()*255,r()*255,r()*255],
-    difb : [r()*255,r()*255,r()*255],
-    difc : [r()*255,r()*255,r()*255],
-    difd : [r()*255,r()*255,r()*255] 
+    shblur : 10.
 
 };
 
@@ -1039,21 +1038,19 @@ castfolder.add(cast,'dmax',0.,1000.).onChange(updateUniforms);
 let camerafolder = gui.addFolder('camera');
 
 camerafolder.add(camera,'fov',2.).onChange(updateUniforms);
-camerafolder.add(camera,'lightAttach',false).onChange(updateUniforms);
+camerafolder.add(camera,'orbitcontrols',false).onChange(updateUniforms);
 
 let lightfolder = gui.addFolder('light');
 
+lightfolder.addColor(light,'dif').onChange(updateUniforms)
 lightfolder.addColor(light,'amb').onChange(updateUniforms);
 lightfolder.addColor(light,'spe').onChange(updateUniforms);
 lightfolder.addColor(light,'fre').onChange(updateUniforms);
 lightfolder.addColor(light,'ref').onChange(updateUniforms);
+lightfolder.add(light,'gamma',false).onChange(updateUniforms);
 lightfolder.add(light,'shsteps',0,25).onChange(updateUniforms);
 lightfolder.add(light,'shmax',0,10).onChange(updateUniforms);
 lightfolder.add(light,'shblur',0,25).onChange(updateUniforms);
-lightfolder.addColor(light,'difa').onChange(updateUniforms);
-lightfolder.addColor(light,'difb').onChange(updateUniforms);
-lightfolder.addColor(light,'difc').onChange(updateUniforms);
-lightfolder.addColor(light,'difd').onChange(updateUniforms);
 
 let noisefolder = gui.addFolder('noise');
 noisefolder.add(noise,'seed').onChange(updateUniforms);
@@ -1163,14 +1160,11 @@ function init() {
            randboxes  : { value : demo.randboxes },
 
            res        : new THREE.Uniform(new THREE.Vector2(w,h)),
+           diffuse    : new THREE.Uniform(new THREE.Color().fromArray(light.dif)),
            ambient    : new THREE.Uniform(new THREE.Color().fromArray(light.amb)),
            specular   : new THREE.Uniform(new THREE.Color().fromArray(light.spe)),
            fresnel    : new THREE.Uniform(new THREE.Color().fromArray(light.fre)),
            reflection : new THREE.Uniform(new THREE.Color().fromArray(light.ref)),
-           difa : new THREE.Uniform(new THREE.Color().fromArray(light.difa)),
-           difb : new THREE.Uniform(new THREE.Color().fromArray(light.difb)),
-           difc : new THREE.Uniform(new THREE.Color().fromArray(light.difc)),
-           difd : new THREE.Uniform(new THREE.Color().fromArray(light.difd)),
            
            time       : { value : 1. },
            seed       : { value : noise.seed },
@@ -1205,14 +1199,11 @@ function updateUniforms() {
     material.uniforms.menger.value = demo.menger;
     material.uniforms.grid.value = demo.grid; 
 
+    material.uniforms.diffuse.value = new THREE.Color().fromArray(light.dif);
     material.uniforms.ambient.value = new THREE.Color().fromArray(light.amb);
     material.uniforms.specular.value = new THREE.Color().fromArray(light.spe);
     material.uniforms.fresnel.value = new THREE.Color().fromArray(light.fre);
     material.uniforms.reflection.value = new THREE.Color().fromArray(light.ref);
-    material.uniforms.difa.value = new THREE.Color().fromArray(light.difa);
-    material.uniforms.difb.value = new THREE.Color().fromArray(light.difb);
-    material.uniforms.difc.value = new THREE.Color().fromArray(light.difc);
-    material.uniforms.difd.value = new THREE.Color().fromArray(light.difd);   
 
     material.uniforms.seed.value = noise.seed;
     material.uniforms.octaves.value = noise.octaves; 
