@@ -40,6 +40,7 @@ uniform vec3 reflection;
 uniform int shsteps;
 uniform float shmax;
 uniform float shblur;
+uniform float speed;
 
 uniform int spherelog;
 uniform int boxes;
@@ -663,26 +664,26 @@ float octahedron(vec3 p,float s) {
 vec2 scene(vec3 p) {
 
 vec2 res = vec2(1.,0.);
+
 float s = .001;
 float t = time;
 
 if(grid == 1) {
 
-    p = repeat(p,vec3(5.));
+    p = repeat(p,vec3(10.));
 
     float e = 1e10;
-    float b0 = box(p.xyz,vec3(e,1.,1.));
-    float b1 = box(p.yzx,vec3(1.,e,1.));
-    float b2 = box(p.zxy,vec3(1.,1.,e));
+    float l = 1.;    
+
+    float b0 = box(p.xyz,vec3(e,l,l));
+    float b1 = box(p.yzx,vec3(l,e,l));
+    float b2 = box(p.zxy,vec3(l,l,e));
     
     res = opu(res,vec2(min(b0,min(b1,b2)),2.));
 
 }
 
 if(moire == 1) {
-
-    p = repeat(p + repeat(p,vec3(5.)) ,vec3(45.)); 
-    res = opu(res,vec2(box(p,vec3(1.)),2.));
 
 }
 
@@ -706,8 +707,8 @@ if(spherelog == 1) {
 
 if(boxes == 1) {
 
-     p = repeatLimit(p,floor(hash(10.)*100.),vec3(floor(hash(15.)*100.)));
-     res = opu(res,vec2(box(p,vec3(1.)),2.));
+     p = repeat(p + repeatLimit(p,.25,vec3(5.)),vec3(10.));
+     res = opu(res,vec2(box(p,vec3(.075)),2.));
 
 }
 
@@ -737,13 +738,13 @@ if(menger == 1) {
 if(randboxes == 1) {
 
     vec3 q = p;
-    float scale = 10.;
+    float scale = 5.;
     vec3 loc = floor(p/scale);
     q.xz = mod(q.xz,s) - .5 * scale;
 
     vec3 h = vec3(hash(loc.xz),hash(loc.y),hash(loc.xz));
     
-    float b = box(p,vec3(1.));
+    float b = box(q,vec3(1.));
   
     if(h.x < .5) {
         res = opu(res,vec2(b,2.));
@@ -767,8 +768,8 @@ if(undulate == 1) {
 
     vec3 q = p;
     
-    p.xz *= rot2(t * s);
-    
+    q.xz *= rot2(t * s); 
+ 
     float sb = mix(sphere(p,.25),box(q,vec3(1.)),sin(t * s) *.5 + .5);
     sb += n3(p + n3(p * .25 + t * s)) * .25;
 
@@ -886,7 +887,7 @@ vec3 render(vec3 ro,vec3 rd) {
  
 vec2 d = rayScene(ro, rd);
 
-vec3 col = vec3(1.);
+vec3 col = vec3(0.);
 
 if(d.y >= 0.) {
 
@@ -901,7 +902,7 @@ float dif = clamp(dot(n,l),0.0,1.0);
 float spe = pow(clamp(dot(n,h),0.0,1.0),16.) * dif * (.04 + 0.9 * pow(clamp(1. + dot(h,rd),0.,1.),5.));
 float fre = pow(clamp(1. + dot(n,rd),0.0,1.0),2.0);
 float ref = smoothstep(-.2,.2,r.y);
-vec3 linear = vec3(0.1);
+vec3 linear = vec3(0.);
 
 dif *= shadow(p,l);
 ref *= shadow(p,r);
@@ -913,21 +914,20 @@ linear += fre * normalize(vec3(fresnel));
 
 if(d.y == 2.) {
 
-float lev = n3(p);
-float n = 0.;
+float nl = 0.;
 
-if(hash(115.) < lev) {  
-n += f3(p,hash(122.));
+if(hash(115.) < hash(244.)) {  
+nl += f3(p,hash(122.));
 }
 
-if(hash(35.) < lev) {
-n += f3(p+f3(p,.5),.5);
+if(hash(35.) < hash(232.)) {
+nl += f3(p+f3(p,.5),.5);
 } 
 
-col += fmCol(n,vec3(hash(112.),hash(33.),hash(21.)),
-                vec3(hash(12.),hash(105.),hash(156.)),
-                vec3(hash(32.),hash(123.),hash(25.)),
-                vec3(hash(10.),hash(15.),hash(27.)));               
+col += fmCol(p.y + nl,vec3(hash(112.),hash(33.),hash(21.)),
+                      vec3(hash(12.),hash(105.),hash(156.)), 
+                      vec3(hash(32.),hash(123.),hash(25.)),
+                      vec3(hash(10.),hash(15.),hash(27.)));               
                         
 }
 
@@ -1047,7 +1047,7 @@ lightfolder.addColor(light,'amb').onChange(updateUniforms);
 lightfolder.addColor(light,'spe').onChange(updateUniforms);
 lightfolder.addColor(light,'fre').onChange(updateUniforms);
 lightfolder.addColor(light,'ref').onChange(updateUniforms);
-lightfolder.add(light,'gamma',false).onChange(updateUniforms);
+lightfolder.add(light,'gamma').onChange(updateUniforms);
 lightfolder.add(light,'shsteps',0,25).onChange(updateUniforms);
 lightfolder.add(light,'shmax',0,10).onChange(updateUniforms);
 lightfolder.add(light,'shblur',0,25).onChange(updateUniforms);
@@ -1136,7 +1136,8 @@ function init() {
     renderer.setSize(w,h);
     
     cam = new THREE.PerspectiveCamera(0.,w/h,0.,1.);
-    cam.position.set(0.,2.,5.);
+    cam.position.set(0.,10.,15.);
+
 
     sphere = new THREE.SphereBufferGeometry();
     sphere_mat = new THREE.Material();
