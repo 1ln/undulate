@@ -27,6 +27,7 @@ uniform float fov;
 uniform int seed;
 uniform int octaves;
 uniform int gamma;
+uniform int rendernormals;
 uniform float time;
 uniform int steps;
 uniform float eps;
@@ -707,7 +708,7 @@ if(spherelog == 1) {
 
 if(boxes == 1) {
 
-     p = repeat(p + repeatLimit(p,.25,vec3(5.)),vec3(10.));
+     p = repeat(p,vec3(10.));
      res = opu(res,vec2(box(p,vec3(.075)),2.));
 
 }
@@ -740,7 +741,7 @@ if(randboxes == 1) {
     vec3 q = p;
     float scale = 5.;
     vec3 loc = floor(p/scale);
-    q.xz = mod(q.xz,s) - .5 * scale;
+    q.xz = mod(q.xz,scale) - .5 * scale;
 
     vec3 h = vec3(hash(loc.xz),hash(loc.y),hash(loc.xz));
     
@@ -949,11 +950,15 @@ vec3 cam_pos = cameraPosition;
 vec2 uvu = -1. + 2. * uVu.xy; 
 uvu.x *= res.x/res.y; 
 
-vec3 direction = rayCamDir(uvu,cam_pos,cam_tar,fov); 
-color = render(cam_pos,direction);  
+vec3 dir = rayCamDir(uvu,cam_pos,cam_tar,fov); 
+color = render(cam_pos,dir);  
+
+if(rendernormals == 1) {
+    color = renderNormals(cam_pos,dir);
+}
 
 if(gamma == 1) {  
-color = pow(color,vec3(.4545));      
+    color = pow(color,vec3(.4545));      
 }
 
 out_FragColor = vec4(color,1.0);
@@ -1000,6 +1005,7 @@ let light = {
     fre  : [255,25,25],
     ref  : [25,255,25],
     gamma : true,
+    rendernormals : false,
     shsteps : 16.,
     shmax : 2.,
     shblur : 10.
@@ -1011,6 +1017,12 @@ let noise = {
     seed : s,
     octaves : 4
       
+};
+
+let animate = {
+    
+    speed : .0001 
+
 };
 
 let demo = {
@@ -1047,6 +1059,7 @@ lightfolder.addColor(light,'amb').onChange(updateUniforms);
 lightfolder.addColor(light,'spe').onChange(updateUniforms);
 lightfolder.addColor(light,'fre').onChange(updateUniforms);
 lightfolder.addColor(light,'ref').onChange(updateUniforms);
+lightfolder.add(light,'rendernormals').onChange(updateUniforms);
 lightfolder.add(light,'gamma').onChange(updateUniforms);
 lightfolder.add(light,'shsteps',0,25).onChange(updateUniforms);
 lightfolder.add(light,'shmax',0,10).onChange(updateUniforms);
@@ -1055,6 +1068,9 @@ lightfolder.add(light,'shblur',0,25).onChange(updateUniforms);
 let noisefolder = gui.addFolder('noise');
 noisefolder.add(noise,'seed').onChange(updateUniforms);
 noisefolder.add(noise,'octaves').onChange(updateUniforms);
+
+let animatefolder = gui.addFolder('animate');
+animatefolder.add(animate,'speed',0.,.01).onChange(updateUniforms);
 
 let scenefolder = gui.addFolder('demo');
 
@@ -1138,6 +1154,12 @@ function init() {
     cam = new THREE.PerspectiveCamera(0.,w/h,0.,1.);
     cam.position.set(0.,10.,15.);
 
+    controls = new THREE.OrbitControls(cam,canvas);
+        controls.minDistance = 0.;
+        controls.maxDistance = 25.;
+        controls.target = 0.;
+        controls.enableDamping = true;
+        controls.enable = false;
 
     sphere = new THREE.SphereBufferGeometry();
     sphere_mat = new THREE.Material();
@@ -1167,17 +1189,20 @@ function init() {
            fresnel    : new THREE.Uniform(new THREE.Color().fromArray(light.fre)),
            reflection : new THREE.Uniform(new THREE.Color().fromArray(light.ref)),
            
-           time       : { value : 1. },
-           seed       : { value : noise.seed },
-           octaves    : { value : noise.octaves },
-           fov        : { value : camera.fov },
-           steps      : { value : cast.steps },
-           eps        : { value : cast.eps },
-           dmin       : { value : cast.dmin },
-           dmax       : { value : cast.dmax },
-           shsteps    : { value : light.shsteps },
-           shmax      : { value : light.shmax },
-           shblur     : { value : light.shblur }
+           time          : { value : 1. },
+           seed          : { value : noise.seed },
+           octaves       : { value : noise.octaves },
+           fov           : { value : camera.fov },
+           steps         : { value : cast.steps },
+           eps           : { value : cast.eps },
+           dmin          : { value : cast.dmin },
+           dmax          : { value : cast.dmax },
+           speed         : { value : animate.speed },
+           gamma         : { value : light.gamma },
+           rendernormals : { value : light.rendernormals },
+           shsteps       : { value : light.shsteps },
+           shmax         : { value : light.shmax },
+           shblur        : { value : light.shblur }
 
        },
        vertexShader   : vert,
@@ -1208,11 +1233,14 @@ function updateUniforms() {
 
     material.uniforms.seed.value = noise.seed;
     material.uniforms.octaves.value = noise.octaves; 
+    material.uniforms.speed.value = animate.speed;
     material.uniforms.fov.value = camera.fov;
     material.uniforms.steps.value = cast.steps;
     material.uniforms.eps.value = cast.eps;
     material.uniforms.dmin.value = cast.dmin;
     material.uniforms.dmax.value = cast.dmax;
+    material.uniforms.gamma = light.gamma;
+    material.uniforms.rendernormals = light.rendernormals;
     material.uniforms.shsteps.value = light.shsteps;
     material.uniforms.shmax.value = light.shmax;
     material.uniforms.shblur.value = light.shblur;
