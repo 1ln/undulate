@@ -983,10 +983,10 @@ let s = r.int32();
 
 let cast = {
 
-    steps : 250,
-    eps : 0.001,
+    steps : 500,
+    eps : 0.0001,
     dmin : 0.,
-    dmax : 500.
+    dmax : 1500.
 
 };
 
@@ -1021,7 +1021,7 @@ let noise = {
 
 let animate = {
     
-    speed : .0001 
+    speed : .0001
 
 };
 
@@ -1050,7 +1050,7 @@ castfolder.add(cast,'dmax',0.,1000.).onChange(updateUniforms);
 let camerafolder = gui.addFolder('camera');
 
 camerafolder.add(camera,'fov',2.).onChange(updateUniforms);
-camerafolder.add(camera,'orbitcontrols',false).onChange(updateUniforms);
+camerafolder.add(camera,'orbitcontrols').onChange(render);
 
 let lightfolder = gui.addFolder('light');
 
@@ -1154,21 +1154,22 @@ function init() {
     cam = new THREE.PerspectiveCamera(0.,w/h,0.,1.);
     cam.position.set(0.,10.,15.);
 
-    controls = new THREE.OrbitControls(cam,canvas);
-        controls.minDistance = 0.;
-        controls.maxDistance = 25.;
-        controls.target = 0.;
-        controls.enableDamping = true;
-        controls.enable = false;
-
     sphere = new THREE.SphereBufferGeometry();
     sphere_mat = new THREE.Material();
     target = new THREE.Mesh(sphere,sphere_mat);
     target.position.set(0.,0.,0.);
     target.add(cam);
+    
+    cam.lookAt(target);
 
-    cam.lookAt(target); 
- 
+    controls = new THREE.OrbitControls(cam,canvas);
+        controls.minDistance = 0.;
+        controls.maxDistance = 25.;
+        controls.target = target.position;
+        controls.enableDamping = true;
+        controls.enablePanning = false;
+        controls.enabled = false;
+
     material = new THREE.ShaderMaterial({
 
        uniforms : {
@@ -1239,14 +1240,21 @@ function updateUniforms() {
     material.uniforms.eps.value = cast.eps;
     material.uniforms.dmin.value = cast.dmin;
     material.uniforms.dmax.value = cast.dmax;
-    material.uniforms.gamma = light.gamma;
-    material.uniforms.rendernormals = light.rendernormals;
+    material.uniforms.gamma.value = light.gamma;
+    material.uniforms.rendernormals.value = light.rendernormals;
     material.uniforms.shsteps.value = light.shsteps;
     material.uniforms.shmax.value = light.shmax;
     material.uniforms.shblur.value = light.shblur;
 
 }
     function render() {
+
+    if(camera.orbitcontrols) {
+        controls.enabled = true;
+        controls.update();
+    } else {
+        controls.enabled = false;
+    }
 
     updateUniforms();
 
