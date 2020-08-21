@@ -33,6 +33,7 @@ uniform int steps;
 uniform float eps;
 uniform float dmin;
 uniform float dmax;
+uniform vec3 bkgcol;
 uniform vec3 diffuse;
 uniform vec3 ambient;
 uniform vec3 specular;
@@ -888,7 +889,7 @@ vec3 render(vec3 ro,vec3 rd) {
  
 vec2 d = rayScene(ro, rd);
 
-vec3 col = vec3(0.);
+vec3 col = normalize(vec3(bkgcol)) - max(rd.y,0.);
 
 if(d.y >= 0.) {
 
@@ -918,11 +919,11 @@ if(d.y == 2.) {
 float nl = 0.;
 
 if(hash(115.) < hash(244.)) {  
-nl += f3(p,hash(122.));
+nl = f3(p,hash(122.));
 }
 
 if(hash(35.) < hash(232.)) {
-nl += f3(p+f3(p,.5),.5);
+nl = f3(p+f3(p,.5),.5);
 } 
 
 col += fmCol(p.y + nl,vec3(hash(112.),hash(33.),hash(21.)),
@@ -934,6 +935,8 @@ col += fmCol(p.y + nl,vec3(hash(112.),hash(33.),hash(21.)),
 
 col = col * linear;
 col += 5. * spe * normalize(vec3(specular));
+
+col = mix(col,bkgcol,1. - exp(-.0001 * d.x * d.x * d.x));
 
 }
 
@@ -990,16 +993,25 @@ let cast = {
 
 };
 
+let viewport = {
+
+    fullscreen : false,
+    width : 512,
+    height : 512
+
+};
+
 let camera = {
 
     fov : 2.,
-    orbitcontrols : false
+    orbitcontrols : true
 
 };
 
 let light = {
 
-    dif  : [100.,225.,10.],
+    bkg  : [255.,255.,255.],
+    dif  : [10.,225.,10.],
     amb  : [5,2,1],
     spe  : [255,255,255],
     fre  : [255,25,25],
@@ -1042,10 +1054,16 @@ let gui = new dat.GUI();
 
 let castfolder = gui.addFolder('cast');
 
-castfolder.add(cast,'steps',0,1000).onChange(updateUniforms);
-castfolder.add(cast,'eps',0.0001).onChange(updateUniforms); 
+castfolder.add(cast,'steps',0,2000).onChange(updateUniforms);
+castfolder.add(cast,'eps',0.00001).onChange(updateUniforms); 
 castfolder.add(cast,'dmin',0.,1000).onChange(updateUniforms);
-castfolder.add(cast,'dmax',0.,1000.).onChange(updateUniforms);
+castfolder.add(cast,'dmax',0.,2000.).onChange(updateUniforms);
+
+let viewportfolder = gui.addFolder('viewport');
+
+viewportfolder.add(viewport,'fullscreen').onChange(render);
+viewportfolder.add(viewport,'width').onChange(render);
+viewportfolder.add(viewport,'height').onChange(render);
 
 let camerafolder = gui.addFolder('camera');
 
@@ -1054,7 +1072,8 @@ camerafolder.add(camera,'orbitcontrols').onChange(render);
 
 let lightfolder = gui.addFolder('light');
 
-lightfolder.addColor(light,'dif').onChange(updateUniforms)
+lightfolder.addColor(light,'bkg').onChange(updateUniforms);
+lightfolder.addColor(light,'dif').onChange(updateUniforms);
 lightfolder.addColor(light,'amb').onChange(updateUniforms);
 lightfolder.addColor(light,'spe').onChange(updateUniforms);
 lightfolder.addColor(light,'fre').onChange(updateUniforms);
@@ -1120,19 +1139,19 @@ render();
 
 function init() {
 
-    let fullscreen = false;
-
     canvas = $('#canvas')[0];
     context = canvas.getContext('webgl2');
     
-    if(fullscreen) {
+    if(viewport.fullscreen) {
 
         w = window.innerWidth;
         h = window.innerHeight;
 
     } else {
 
-        w = 512; h = w;
+        w = viewport.width; 
+        h = viewport.height;
+
     } 
 
     canvas.width = w;
@@ -1189,7 +1208,8 @@ function init() {
            specular   : new THREE.Uniform(new THREE.Color().fromArray(light.spe)),
            fresnel    : new THREE.Uniform(new THREE.Color().fromArray(light.fre)),
            reflection : new THREE.Uniform(new THREE.Color().fromArray(light.ref)),
-           
+           bkgcol     : new THREE.Uniform(new THREE.Color().fromArray(light.bkg)),
+
            time          : { value : 1. },
            seed          : { value : noise.seed },
            octaves       : { value : noise.octaves },
@@ -1226,6 +1246,7 @@ function updateUniforms() {
     material.uniforms.menger.value = demo.menger;
     material.uniforms.grid.value = demo.grid; 
 
+    material.uniforms.bkgcol.value = new THREE.Color().fromArray(light.bkg); 
     material.uniforms.diffuse.value = new THREE.Color().fromArray(light.dif);
     material.uniforms.ambient.value = new THREE.Color().fromArray(light.amb);
     material.uniforms.specular.value = new THREE.Color().fromArray(light.spe);
@@ -1250,14 +1271,29 @@ function updateUniforms() {
     function render() {
 
     if(camera.orbitcontrols) {
+
         controls.enabled = true;
         controls.update();
+
     } else {
+
         controls.enabled = false;
+
     }
 
     updateUniforms();
+ 
+    if(viewport.fullscreen) {
 
+        w = window.innerWidth;
+        h = window.innerHeight;
+
+    } else {
+        
+        w = viewport.width;
+        h = viewport.height;
+    }   
+   
     material.uniforms.res.value = new THREE.Vector2(w,h);
     material.uniforms.time.value = performance.now();
 
