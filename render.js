@@ -709,8 +709,8 @@ if(spherelog == 1) {
 
 if(boxes == 1) {
 
-     p = repeat(p,vec3(10.));
-     res = opu(res,vec2(box(p,vec3(.075)),2.));
+     p = repeat(p,vec3(2.));
+     res = opu(res,vec2(box(p,vec3(.5)),2.));
 
 }
 
@@ -889,9 +889,9 @@ vec3 render(vec3 ro,vec3 rd) {
  
 vec2 d = rayScene(ro, rd);
 
-vec3 col = normalize(vec3(bkgcol)) - max(rd.y,0.);
+vec3 col = vec3(bkgcol) - max(rd.y,0.);
 
-if(d.y >= 0.) {
+if(d.y >= 0.) { 
 
 vec3 p = ro + rd * d.x;
 vec3 n = calcNormal(p);
@@ -909,10 +909,10 @@ vec3 linear = vec3(0.);
 dif *= shadow(p,l);
 ref *= shadow(p,r);
 
-linear += dif * normalize(vec3(diffuse));
-linear += amb * normalize(vec3(ambient));
-linear += ref * normalize(vec3(reflection));
-linear += fre * normalize(vec3(fresnel));
+linear += dif * vec3(diffuse);
+linear += amb * vec3(ambient);
+linear += ref * vec3(reflection);
+linear += fre * vec3(fresnel);
 
 if(d.y == 2.) {
 
@@ -934,11 +934,11 @@ col += fmCol(p.y + nl,vec3(hash(112.),hash(33.),hash(21.)),
 }
 
 col = col * linear;
-col += 5. * spe * normalize(vec3(specular));
+col += 5. * spe * vec3(specular);
 
-col = mix(col,bkgcol,1. - exp(-.0001 * d.x * d.x * d.x));
+col = mix(col,vec3(bkgcol),1. - exp(-.0001 * d.x * d.x * d.x));
 
-}
+} 
 
 return col;
 }
@@ -1025,7 +1025,7 @@ let light = {
 };
 
 let noise = {
-
+    
     seed : s,
     octaves : 4
       
@@ -1203,12 +1203,24 @@ function init() {
            randboxes  : { value : demo.randboxes },
 
            res        : new THREE.Uniform(new THREE.Vector2(w,h)),
-           diffuse    : new THREE.Uniform(new THREE.Color().fromArray(light.dif)),
-           ambient    : new THREE.Uniform(new THREE.Color().fromArray(light.amb)),
-           specular   : new THREE.Uniform(new THREE.Color().fromArray(light.spe)),
-           fresnel    : new THREE.Uniform(new THREE.Color().fromArray(light.fre)),
-           reflection : new THREE.Uniform(new THREE.Color().fromArray(light.ref)),
-           bkgcol     : new THREE.Uniform(new THREE.Color().fromArray(light.bkg)),
+        
+           diffuse    : new THREE.Uniform(new THREE.Color()
+              .setRGB(light.dif[0]/255.,light.dif[1]/255.,light.dif[2]/255.)),
+    
+           ambient    : new THREE.Uniform(new THREE.Color()
+               .setRGB(light.amb[0]/255.,light.amb[1]/255.,light[2]/255.)),
+    
+           specular   : new THREE.Uniform(new THREE.Color()
+               .setRGB(light.spe[0]/255.,light.spe[1]/255.,light.spe[2]/255.)),
+   
+           fresnel    : new THREE.Uniform(new THREE.Color()
+               .setRGB(light.fre[0]/255.,light.fre[1]/255.,light.fre[2]/255.)),
+  
+           reflection : new THREE.Uniform(new THREE.Color()
+               .setRGB(light.ref[0]/255.,light.ref[1]/255,light.fre[2]/255.)),
+
+           bkgcol     : new THREE.Uniform(new THREE.Color()
+               .setRGB(light.bkg[0]/255.,light.bkg[1]/255.,light.bkg[2]/255.)),
 
            time          : { value : 1. },
            seed          : { value : noise.seed },
@@ -1246,13 +1258,24 @@ function updateUniforms() {
     material.uniforms.menger.value = demo.menger;
     material.uniforms.grid.value = demo.grid; 
 
-    material.uniforms.bkgcol.value = new THREE.Color().fromArray(light.bkg); 
-    material.uniforms.diffuse.value = new THREE.Color().fromArray(light.dif);
-    material.uniforms.ambient.value = new THREE.Color().fromArray(light.amb);
-    material.uniforms.specular.value = new THREE.Color().fromArray(light.spe);
-    material.uniforms.fresnel.value = new THREE.Color().fromArray(light.fre);
-    material.uniforms.reflection.value = new THREE.Color().fromArray(light.ref);
+    material.uniforms.bkgcol.value = new THREE.Color() 
+        .setRGB(light.bkg[0]/255.,light.bkg[1]/255.,light.bkg[2]/255.); 
 
+    material.uniforms.diffuse.value = new THREE.Color()
+        .setRGB(light.dif[0]/255.,light.dif[1]/255.,light.dif[2]/255.);
+
+    material.uniforms.ambient.value = new THREE.Color()   
+        .setRGB(light.amb[0]/255.,light.amb[2]/255.,light.amb[2]/255.);
+ 
+    material.uniforms.specular.value = new THREE.Color() 
+        .setRGB(light.spe[0]/255.,light.spe[0]/255.,light.spe[2]/255.);
+ 
+    material.uniforms.fresnel.value = new THREE.Color() 
+        .setRGB(light.fre[0]/255.,light.fre[1]/255.,light.fre[2]/255.);
+ 
+    material.uniforms.reflection.value = new THREE.Color() 
+        .setRGB(light.ref[0]/255.,light.ref[1]/255.,light.ref[2]/255.);
+ 
     material.uniforms.seed.value = noise.seed;
     material.uniforms.octaves.value = noise.octaves; 
     material.uniforms.speed.value = animate.speed;
@@ -1293,7 +1316,7 @@ function updateUniforms() {
         w = viewport.width;
         h = viewport.height;
     }   
-   
+
     material.uniforms.res.value = new THREE.Vector2(w,h);
     material.uniforms.time.value = performance.now();
 
