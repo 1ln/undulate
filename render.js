@@ -391,7 +391,7 @@ mat4 translate(vec3 p) {
 );
 }
 
-vec3 repeatLimit(vec3 p,float c,vec3 l) {
+vec3 repLim(vec3 p,float c,vec3 l) {
   
     vec3 q = p - c * clamp( floor((p/c)+0.5) ,-l,l);
     return q; 
@@ -672,14 +672,15 @@ float t = time;
 
 if(grid == 1) {
 
-    p = repeat(p,vec3(10.));
+    float scale = .25;
+    p = repLim(p/scale,4.,vec3(3.))*scale;
 
-    float e = 1e10;
+    float e = 3.;
     float l = 1.;    
 
-    float b0 = box(p.xyz,vec3(e,l,l));
-    float b1 = box(p.yzx,vec3(l,e,l));
-    float b2 = box(p.zxy,vec3(l,l,e));
+    float b0 = box(p.xyz/scale,vec3(e,l,l))*scale;
+    float b1 = box(p.yzx/scale,vec3(l,e,l))*scale;
+    float b2 = box(p.zxy/scale,vec3(l,l,e))*scale;
     
     res = opu(res,vec2(min(b0,min(b1,b2)),2.));
 
@@ -709,8 +710,8 @@ if(spherelog == 1) {
 
 if(boxes == 1) {
 
-     p = repeat(p,vec3(2.));
-     res = opu(res,vec2(box(p,vec3(.5)),2.));
+    p = repLim(p,5.,vec3(2.));
+    res = opu(res,vec2(box(p,vec3(1.)),2.));
 
 }
 
@@ -756,24 +757,24 @@ if(randboxes == 1) {
 
 if(level == 1) {
 
-    vec3 pl = p;
+    vec3 q = p;
     
     p.y += ns2(p.xz * .005 + f2(p.xz * .025) * .125) * 10.;
 
-    float l = plane(p,vec4(0.,1.,0.,1.));
-    float o = pl.y;
+    float pl = plane(p,vec4(0.,1.,0.,1.));
+    float b = box(q,vec3(1.));
 
-    res = opu(res,vec2(smou(l,o,.5),2.));
+    res = opu(res,vec2(smod(b,pl,.5),2.));
 }
 
 if(undulate == 1) {
 
     vec3 q = p;
     
-    q.xz *= rot2(t * s); 
+    float a = .45;
  
-    float sb = mix(sphere(p,.25),box(q,vec3(1.)),sin(t * s) *.5 + .5);
-    sb += n3(p + n3(p * .25 + t * s)) * .25;
+    float sb = mix(sphere(p,.25),box(q,vec3(1.)),sin(a) *.5 + .5);
+    sb += n3(p + n3(p * .25 + a)) * .25;
 
     res = opu(res,vec2(sb,2.));
 }
@@ -1011,7 +1012,7 @@ let camera = {
 let light = {
 
     bkg  : [255.,255.,255.],
-    dif  : [10.,225.,10.],
+    dif  : [100.,100.,100.],
     amb  : [5,2,1],
     spe  : [255,255,255],
     fre  : [255,25,25],
