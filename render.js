@@ -45,10 +45,14 @@ uniform float shblur;
 uniform float speed;
 
 uniform int spherelog;
-uniform int boxes;
+uniform int boxspheres;
 uniform int randboxes;
 uniform int menger;
-uniform int moire;
+uniform int mengerdiag;
+uniform int boxsine;
+uniform int sinesphere;
+uniform int phisphere;
+uniform int cylinderbox; 
 uniform int grid;
 uniform int level;
 uniform int undulate;
@@ -182,6 +186,7 @@ float ns2(vec2 p) {
     
     vec3 p1 = permute(permute(i.y + vec3(0.,i1.y,1.))
         + i.x + vec3(0.,i1.x,1.));
+        p1 = permute(mod289(p1 + vec3(float(seed))));
 
     vec3 m = max(.5 - vec3(dot(x0,x0),dot(x12.xy,x12.xy),dot(x12.zw,x12.zw)),0.);
     m = m * m; 
@@ -663,67 +668,12 @@ float octahedron(vec3 p,float s) {
     return length(vec3(q.x,q.y-s+k,q.z - k)); 
 }
 
-vec2 scene(vec3 p) {
+float menger4(vec3 p,float s,float d) {
 
-vec2 res = vec2(1.,0.);
-
-float s = .001;
-float t = time;
-
-if(grid == 1) {
-
-    float scale = .25;
-    p = repLim(p/scale,4.,vec3(3.))*scale;
-
-    float e = 3.;
-    float l = 1.;    
-
-    float b0 = box(p.xyz/scale,vec3(e,l,l))*scale;
-    float b1 = box(p.yzx/scale,vec3(l,e,l))*scale;
-    float b2 = box(p.zxy/scale,vec3(l,l,e))*scale;
-    
-    res = opu(res,vec2(min(b0,min(b1,b2)),2.));
-
-}
-
-if(moire == 1) {
-
-}
-
-if(spherelog == 1) {
-
-    float scale = float(hash(100.)*100. + 15.) / PI;
-
-    vec2 h = p.xz;
-    float r = length(h);
-
-    h = vec2(log(r),atan(h.y,h.x));
-    h *= scale;
-    h = mod(h,2.) - 1.;
-    float mul = r/scale;
-  
-    float d = 0.;
-    d = sphere(vec3(h,p.y/mul),1.) * mul;
-    res = opu(res,vec2(d,2.));
-    
-}
-
-if(boxes == 1) {
-
-    p = repLim(p,5.,vec3(2.));
-    res = opu(res,vec2(box(p,vec3(1.)),2.));
-
-}
-
-if(menger == 1) {
-
-    float b = box(p,vec3(1.));
-    float scale = 1.;
-     
     for(int i = 0; i < 4; i++) {
 
-        vec3 a = mod(p * scale,2.)-1.;
-        scale *= 3.;
+        vec3 a = mod(p * s,2.)-1.;
+        s *= 3.;
 
         vec3 r = abs(1. - 3. * abs(a)); 
        
@@ -731,55 +681,31 @@ if(menger == 1) {
         float b1 = max(r.y,r.z);
         float b2 = max(r.z,r.x);
 
-        float c = (min(b0,min(b1,b2)) - 1.)/scale;         
-        b = max(b,c);
+        float c = (min(b0,min(b1,b2)) - 1.)/s;         
+        d = max(d,c);
      }
 
-     res = opu(res,vec2(b,2.));
+     return d;
 }
 
-if(randboxes == 1) {
+vec2 scene(vec3 p) {
 
-    vec3 q = p;
-    float scale = 5.;
-    vec3 loc = floor(p/scale);
-    q.xz = mod(q.xz,scale) - .5 * scale;
-
-    vec3 h = vec3(hash(loc.xz),hash(loc.y),hash(loc.xz));
-    
-    float b = box(q,vec3(1.));
-  
-    if(h.x < .5) {
-        res = opu(res,vec2(b,2.));
-    }
-
-}
-
-if(level == 1) {
-
-    vec3 q = p;
-    
-    p.y += ns2(p.xz * .005 + f2(p.xz * .025) * .125) * 10.;
-
-    float pl = plane(p,vec4(0.,1.,0.,1.));
-    float b = box(q,vec3(1.));
-
-    res = opu(res,vec2(smod(b,pl,.5),2.));
-}
-
-if(undulate == 1) {
-
-    vec3 q = p;
-    
-    float a = .45;
+    vec2 res = vec2(1.,0.);
  
-    float sb = mix(sphere(p,.25),box(q,vec3(1.)),sin(a) *.5 + .5);
-    sb += n3(p + n3(p * .25 + a)) * .25;
+    float s = speed;
+    float t = time;  
+    
+    vec3 q = p;
 
-    res = opu(res,vec2(sb,2.));
-}
-
-return res;
+    res = opu(res,vec2(menger4(p,1.,box(p,vec3(1.))),2.));
+    res = opu(res,vec2(menger4(p,2.,octahedron(p,1.)),2.));
+    
+    //p.y += ns2(p.xz * .005 + f2(p.xz * .025) * .125) * 10.;
+    float pl = plane(p,vec4(0.,1.,0.,1.));
+    //float b = q.y;
+    //res = opu(res,vec2(smou(b,pl,.5),2.));
+  
+  return res;
 
 }
 
@@ -917,11 +843,7 @@ linear += fre * vec3(fresnel);
 
 if(d.y == 2.) {
 
-float nl = 0.;
-
-if(hash(115.) < hash(244.)) {  
-nl = f3(p,hash(122.));
-}
+float nl = f3(p,hash(122.));
 
 if(hash(35.) < hash(232.)) {
 nl = f3(p+f3(p,.5),.5);
@@ -983,7 +905,7 @@ let sphere,sphere_mat;
 let fov;
 
 let r = new Math.seedrandom();
-let s = r.int32();
+let s = Math.abs(r.int32());
 
 let cast = {
 
@@ -991,14 +913,6 @@ let cast = {
     eps : 0.0001,
     dmin : 0.,
     dmax : 1500.
-
-};
-
-let viewport = {
-
-    fullscreen : false,
-    width : 512,
-    height : 512
 
 };
 
@@ -1015,11 +929,11 @@ let light = {
     dif  : [100.,100.,100.],
     amb  : [5,2,1],
     spe  : [255,255,255],
-    fre  : [255,25,25],
-    ref  : [25,255,25],
+    fre  : [5,25,25],
+    ref  : [25,150,25],
     gamma : true,
     rendernormals : false,
-    shsteps : 16.,
+    shsteps : 0.,
     shmax : 2.,
     shblur : 10.
 
@@ -1028,6 +942,7 @@ let light = {
 let noise = {
     
     seed : s,
+    reseed : function() { reSeed(); }, 
     octaves : 4
       
 };
@@ -1041,10 +956,9 @@ let animate = {
 let demo = {
 
     spherelog : true,
-    boxes : false,
+    boxspheres : false,
     undulate : false,
     level : false,
-    moire : false,
     randboxes : false,
     menger    : false,
     grid      : false
@@ -1059,12 +973,6 @@ castfolder.add(cast,'steps',0,2000).onChange(updateUniforms);
 castfolder.add(cast,'eps',0.00001).onChange(updateUniforms); 
 castfolder.add(cast,'dmin',0.,1000).onChange(updateUniforms);
 castfolder.add(cast,'dmax',0.,2000.).onChange(updateUniforms);
-
-let viewportfolder = gui.addFolder('viewport');
-
-viewportfolder.add(viewport,'fullscreen').onChange(render);
-viewportfolder.add(viewport,'width').onChange(render);
-viewportfolder.add(viewport,'height').onChange(render);
 
 let camerafolder = gui.addFolder('camera');
 
@@ -1086,7 +994,8 @@ lightfolder.add(light,'shmax',0,10).onChange(updateUniforms);
 lightfolder.add(light,'shblur',0,25).onChange(updateUniforms);
 
 let noisefolder = gui.addFolder('noise');
-noisefolder.add(noise,'seed').onChange(updateUniforms);
+noisefolder.add(noise,'reseed');
+noisefolder.add(noise,'seed').listen().onChange(updateUniforms);
 noisefolder.add(noise,'octaves').onChange(updateUniforms);
 
 let animatefolder = gui.addFolder('animate');
@@ -1099,24 +1008,19 @@ let spherelog = scenefolder.add(demo,'spherelog')
 setScene('spherelog')
 });
 
-let boxes = scenefolder.add(demo,'boxes')
-.name('Boxes').listen().onChange(function() {
-setScene('boxes')
+let boxspheres = scenefolder.add(demo,'boxspheres')
+.name('Box Spheres').listen().onChange(function() {
+setScene('boxspheres')
 });
 
 let undulate = scenefolder.add(demo,'undulate')
-.name('Undulate').listen().onChange(function() {
+.name('Undulate box').listen().onChange(function() {
 setScene('undulate')
 });
 
 let level = scenefolder.add(demo,'level')
 .name('Level').listen().onChange(function() {
 setScene('level')
-});
- 
-let moire = scenefolder.add(demo,'moire')
-.name('Moire').listen().onChange(function() {
-setScene('moire')
 });
 
 let randboxes = scenefolder.add(demo,'randboxes')
@@ -1143,17 +1047,8 @@ function init() {
     canvas = $('#canvas')[0];
     context = canvas.getContext('webgl2');
     
-    if(viewport.fullscreen) {
-
-        w = window.innerWidth;
-        h = window.innerHeight;
-
-    } else {
-
-        w = viewport.width; 
-        h = viewport.height;
-
-    } 
+    w = window.innerWidth;
+    h = window.innerHeight;
 
     canvas.width = w;
     canvas.height = h;
@@ -1195,11 +1090,10 @@ function init() {
        uniforms : {
     
            spherelog  : { value : demo.spherelog },
-           boxes      : { value : demo.boxes },
+           boxspheres : { value : demo.boxspheres },
            level      : { value : demo.level },
            undulate   : { value : demo.undulate },
            grid       : { value : demo.grid },
-           moire      : { value : demo.moire },
            menger     : { value : demo.menger },
            randboxes  : { value : demo.randboxes },
 
@@ -1239,8 +1133,10 @@ function init() {
            shblur        : { value : light.shblur }
 
        },
+
        vertexShader   : vert,
        fragmentShader : frag
+
     });
 
     mesh = new THREE.Mesh(plane,material);
@@ -1251,10 +1147,9 @@ function init() {
 function updateUniforms() {
 
     material.uniforms.spherelog.value = demo.spherelog;
-    material.uniforms.boxes.value = demo.boxes;
+    material.uniforms.boxspheres.value = demo.boxspheres;
     material.uniforms.level.value = demo.level;
     material.uniforms.undulate.value = demo.undulate;
-    material.uniforms.moire.value = demo.moire;
     material.uniforms.randboxes.value = demo.randboxes;
     material.uniforms.menger.value = demo.menger;
     material.uniforms.grid.value = demo.grid; 
@@ -1294,35 +1189,30 @@ function updateUniforms() {
 }
     function render() {
 
-    if(camera.orbitcontrols) {
+        if(camera.orbitcontrols) {
 
-        controls.enabled = true;
-        controls.update();
+            controls.enabled = true;
+            controls.update();
 
-    } else {
+        } else {
 
-        controls.enabled = false;
+            controls.enabled = false;
 
-    }
+       }
 
     updateUniforms();
  
-    if(viewport.fullscreen) {
-
-        w = window.innerWidth;
-        h = window.innerHeight;
-
-    } else {
-        
-        w = viewport.width;
-        h = viewport.height;
-    }   
-
     material.uniforms.res.value = new THREE.Vector2(w,h);
     material.uniforms.time.value = performance.now();
 
     renderer.render(scene,cam);
     requestAnimationFrame(render);
+
+}
+
+function reSeed() {
+
+    noise.seed = Math.abs(r.int32());
 
 }
 
