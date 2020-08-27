@@ -47,7 +47,7 @@ uniform float speed;
 uniform int spherelog;
 uniform int boxspheres;
 uniform int randboxes;
-uniform int menger;
+uniform int mengerrand;
 uniform int mengerdiag;
 uniform int boxsine;
 uniform int sinesphere;
@@ -668,9 +668,26 @@ float octahedron(vec3 p,float s) {
     return length(vec3(q.x,q.y-s+k,q.z - k)); 
 }
 
-float menger4(vec3 p,float s,float d) {
+float trefoil(vec3 p,vec2 t,float n) {
 
-    for(int i = 0; i < 4; i++) {
+    vec2 q = vec2(length(p.xz)-t.x,p.y);     
+
+    float a = atan(p.x,p.z);
+    float c = cos(a*n);
+    float s = sin(a*n);
+
+    mat2 m = mat2(c,-s,s,c);    
+    q *= m;
+
+    q.y = abs(q.y)-.5;
+
+    return length(q) - t.y;
+
+}
+
+float menger(vec3 p,int n,float s,float d) {
+
+    for(int i = 0; i < n; i++) {
 
         vec3 a = mod(p * s,2.)-1.;
         s *= 3.;
@@ -691,15 +708,27 @@ float menger4(vec3 p,float s,float d) {
 vec2 scene(vec3 p) {
 
     vec2 res = vec2(1.,0.);
- 
+
+    float d = 0.;     
     float s = speed;
     float t = time;  
     
     vec3 q = p;
 
-    res = opu(res,vec2(menger4(p,1.,box(p,vec3(1.))),2.));
-    res = opu(res,vec2(menger4(p,2.,octahedron(p,1.)),2.));
-    
+    p.xz *= rot2(t*s);
+    p.zy *= rot2(t*s);
+     
+    int r = int(floor((hash(35.) * 6.) + 2.));
+    d = menger(p,r,1.,box(p,vec3(1.)));
+  
+    d = menger(p,4,2.,octahedron(p,1.));
+
+    float pl = plane(q*.5,vec4(0.,-1.,-1.,0.));
+    d = max(-pl,menger(p,4,1.,box(p,vec3(1.)))); 
+
+    float n = n3(p*.5);
+    d = smou(box(p,vec3(1.)),octahedron(q,1.),n);
+
     //p.y += ns2(p.xz * .005 + f2(p.xz * .025) * .125) * 10.;
     float pl = plane(p,vec4(0.,1.,0.,1.));
     //float b = q.y;
