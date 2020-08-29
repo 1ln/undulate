@@ -34,28 +34,16 @@ uniform float eps;
 uniform float dmin;
 uniform float dmax;
 uniform vec3 bkgcol;
-uniform vec3 diffuse;
-uniform vec3 ambient;
-uniform vec3 specular;
-uniform vec3 fresnel;
-uniform vec3 reflection;
 uniform int shsteps;
 uniform float shmax;
 uniform float shblur;
 uniform float speed;
 
-uniform int spherelog;
-uniform int boxspheres;
-uniform int randboxes;
-uniform int mengerrand;
+uniform int boxdiags;
+uniform int mengerbox;
 uniform int mengerdiag;
-uniform int boxsine;
-uniform int sinesphere;
-uniform int phisphere;
-uniform int cylinderbox; 
-uniform int grid;
-uniform int level;
-uniform int undulate;
+uniform int octamenger;
+uniform int octabox;
 
 const float E    =  2.7182818;
 const float PI   =  radians(180.0); 
@@ -685,6 +673,14 @@ float trefoil(vec3 p,vec2 t,float n) {
 
 }
 
+float gyroid(vec3 p,float s,float b,float v,float d) {
+
+    p *= s;
+    float g = abs(dot(sin(p),cos(p.zxy))-/s-v);
+    return max(d,g*.5);
+
+} 
+
 float menger(vec3 p,int n,float s,float d) {
 
     for(int i = 0; i < n; i++) {
@@ -729,10 +725,12 @@ vec2 scene(vec3 p) {
     float n = n3(p*.5);
     d = smou(box(p,vec3(1.)),octahedron(q,1.),n);
 
+    res = opu(res,vec2(d,2.)); 
+    
     //p.y += ns2(p.xz * .005 + f2(p.xz * .025) * .125) * 10.;
-    float pl = plane(p,vec4(0.,1.,0.,1.));
-    //float b = q.y;
-    //res = opu(res,vec2(smou(b,pl,.5),2.));
+
+    float pl = plane(p-vec3(0.,5.,0.),vec4(0.,1.,0.,1.));
+    res = opu(res,vec2(pl,1.));
   
   return res;
 
@@ -851,7 +849,7 @@ if(d.y >= 0.) {
 
 vec3 p = ro + rd * d.x;
 vec3 n = calcNormal(p);
-vec3 l = normalize(vec3(0.,10.,0.));
+vec3 l = normalize(vec3(0.,10.,10.));
 vec3 h = normalize(l - rd);
 vec3 r = reflect(rd,n);
 
@@ -865,10 +863,14 @@ vec3 linear = vec3(0.);
 dif *= shadow(p,l);
 ref *= shadow(p,r);
 
-linear += dif * vec3(diffuse);
-linear += amb * vec3(ambient);
-linear += ref * vec3(reflection);
-linear += fre * vec3(fresnel);
+linear += dif * vec3(hash(135.),hash(34.),hash(344.));
+linear += amb * vec3(hash(295.),hash(363.),hash(324.));
+linear += ref * vec3(hash(245.),hash(123.),hash(335.));
+linear += fre * vec3(hash(126.),hash(45.),hash(646.));
+
+if(d.y == 1.) {
+col = vec3(.5);
+}
 
 if(d.y == 2.) {
 
@@ -886,7 +888,7 @@ col += fmCol(p.y + nl,vec3(hash(112.),hash(33.),hash(21.)),
 }
 
 col = col * linear;
-col += 5. * spe * vec3(specular);
+col += 5. * spe * vec3(hash(146.),hash(925.),hash(547.));
 
 col = mix(col,vec3(bkgcol),1. - exp(-.0001 * d.x * d.x * d.x));
 
@@ -955,11 +957,6 @@ let camera = {
 let light = {
 
     bkg  : [255.,255.,255.],
-    dif  : [100.,100.,100.],
-    amb  : [5,2,1],
-    spe  : [255,255,255],
-    fre  : [5,25,25],
-    ref  : [25,150,25],
     gamma : true,
     rendernormals : false,
     shsteps : 0.,
@@ -1011,11 +1008,6 @@ camerafolder.add(camera,'orbitcontrols').onChange(render);
 let lightfolder = gui.addFolder('light');
 
 lightfolder.addColor(light,'bkg').onChange(updateUniforms);
-lightfolder.addColor(light,'dif').onChange(updateUniforms);
-lightfolder.addColor(light,'amb').onChange(updateUniforms);
-lightfolder.addColor(light,'spe').onChange(updateUniforms);
-lightfolder.addColor(light,'fre').onChange(updateUniforms);
-lightfolder.addColor(light,'ref').onChange(updateUniforms);
 lightfolder.add(light,'rendernormals').onChange(updateUniforms);
 lightfolder.add(light,'gamma').onChange(updateUniforms);
 lightfolder.add(light,'shsteps',0,25).onChange(updateUniforms);
@@ -1110,6 +1102,7 @@ function init() {
         controls.minDistance = 0.;
         controls.maxDistance = 25.;
         controls.target = target.position;
+        controls.maxPolarAngle = 2.;
         controls.enableDamping = true;
         controls.enablePanning = false;
         controls.enabled = false;
@@ -1128,21 +1121,6 @@ function init() {
 
            res        : new THREE.Uniform(new THREE.Vector2(w,h)),
         
-           diffuse    : new THREE.Uniform(new THREE.Color()
-              .setRGB(light.dif[0]/255.,light.dif[1]/255.,light.dif[2]/255.)),
-    
-           ambient    : new THREE.Uniform(new THREE.Color()
-               .setRGB(light.amb[0]/255.,light.amb[1]/255.,light[2]/255.)),
-    
-           specular   : new THREE.Uniform(new THREE.Color()
-               .setRGB(light.spe[0]/255.,light.spe[1]/255.,light.spe[2]/255.)),
-   
-           fresnel    : new THREE.Uniform(new THREE.Color()
-               .setRGB(light.fre[0]/255.,light.fre[1]/255.,light.fre[2]/255.)),
-  
-           reflection : new THREE.Uniform(new THREE.Color()
-               .setRGB(light.ref[0]/255.,light.ref[1]/255,light.fre[2]/255.)),
-
            bkgcol     : new THREE.Uniform(new THREE.Color()
                .setRGB(light.bkg[0]/255.,light.bkg[1]/255.,light.bkg[2]/255.)),
 
@@ -1182,24 +1160,6 @@ function updateUniforms() {
     material.uniforms.randboxes.value = demo.randboxes;
     material.uniforms.menger.value = demo.menger;
     material.uniforms.grid.value = demo.grid; 
-
-    material.uniforms.bkgcol.value = new THREE.Color() 
-        .setRGB(light.bkg[0]/255.,light.bkg[1]/255.,light.bkg[2]/255.); 
-
-    material.uniforms.diffuse.value = new THREE.Color()
-        .setRGB(light.dif[0]/255.,light.dif[1]/255.,light.dif[2]/255.);
-
-    material.uniforms.ambient.value = new THREE.Color()   
-        .setRGB(light.amb[0]/255.,light.amb[2]/255.,light.amb[2]/255.);
- 
-    material.uniforms.specular.value = new THREE.Color() 
-        .setRGB(light.spe[0]/255.,light.spe[0]/255.,light.spe[2]/255.);
- 
-    material.uniforms.fresnel.value = new THREE.Color() 
-        .setRGB(light.fre[0]/255.,light.fre[1]/255.,light.fre[2]/255.);
- 
-    material.uniforms.reflection.value = new THREE.Color() 
-        .setRGB(light.ref[0]/255.,light.ref[1]/255.,light.ref[2]/255.);
  
     material.uniforms.seed.value = noise.seed;
     material.uniforms.octaves.value = noise.octaves; 
