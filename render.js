@@ -656,7 +656,7 @@ float octahedron(vec3 p,float s) {
     return length(vec3(q.x,q.y-s+k,q.z - k)); 
 }
 
-float trefoil(vec3 p,vec2 t,float n) {
+float trefoil(vec3 p,vec2 t,float n,float l,float e) {
 
     vec2 q = vec2(length(p.xz)-t.x,p.y);     
 
@@ -667,16 +667,16 @@ float trefoil(vec3 p,vec2 t,float n) {
     mat2 m = mat2(c,-s,s,c);    
     q *= m;
 
-    q.y = abs(q.y)-.5;
+    q.y = abs(q.y)-l;
 
-    return length(q) - t.y;
+    return (length(q) - t.y)*e;
 
 }
 
 float gyroid(vec3 p,float s,float b,float v,float d) {
 
     p *= s;
-    float g = abs(dot(sin(p),cos(p.zxy))-/s-v);
+    float g = abs(dot(sin(p),cos(p.zxy))-b)/s-v;
     return max(d,g*.5);
 
 } 
@@ -713,23 +713,26 @@ vec2 scene(vec3 p) {
 
     p.xz *= rot2(t*s);
     p.zy *= rot2(t*s);
-     
-    int r = int(floor((hash(35.) * 6.) + 2.));
-    d = menger(p,r,1.,box(p,vec3(1.)));
+
+    d = menger(p,5,1.,box(p,vec3(1.)));
   
     d = menger(p,4,2.,octahedron(p,1.));
 
-    float pl = plane(q*.5,vec4(0.,-1.,-1.,0.));
-    d = max(-pl,menger(p,4,1.,box(p,vec3(1.)))); 
+    d = max(
+    -plane(q*.5,vec4(1.,-1.,-1.,0.)),
+    menger(p,4,1.,box(p,vec3(1.)))); 
 
-    float n = n3(p*.5);
-    d = smou(box(p,vec3(1.)),octahedron(q,1.),n);
+    d = gyroid(p,5.,.35,.015,sphere(p,1.));
+
+    d = gyroid(p,6.,.5,.05,box(p,vec3(1.)));
+
+    d = trefoil(p,vec2(1.5,.25),3.,.25,.5); 
 
     res = opu(res,vec2(d,2.)); 
     
     //p.y += ns2(p.xz * .005 + f2(p.xz * .025) * .125) * 10.;
 
-    float pl = plane(p-vec3(0.,5.,0.),vec4(0.,1.,0.,1.));
+    float pl = plane(q+vec3(0.,1.5,0.),vec4(0.,1.,0.,1.));
     res = opu(res,vec2(pl,1.));
   
   return res;
@@ -843,7 +846,7 @@ vec3 render(vec3 ro,vec3 rd) {
  
 vec2 d = rayScene(ro, rd);
 
-vec3 col = vec3(bkgcol) - max(rd.y,0.);
+vec3 col = vec3(1.) - max(rd.y,0.);
 
 if(d.y >= 0.) { 
 
@@ -855,42 +858,53 @@ vec3 r = reflect(rd,n);
 
 float amb = sqrt(clamp(0.5 + 0.5 * n.y,0.0,1.0));
 float dif = clamp(dot(n,l),0.0,1.0);
-float spe = pow(clamp(dot(n,h),0.0,1.0),16.) * dif * (.04 + 0.9 * pow(clamp(1. + dot(h,rd),0.,1.),5.));
+
+float spe = pow(clamp(dot(n,h),0.0,1.0),16.)
+* dif * (.04 + 0.9 * pow(clamp(1. + dot(h,rd),0.,1.),5.));
+
 float fre = pow(clamp(1. + dot(n,rd),0.0,1.0),2.0);
 float ref = smoothstep(-.2,.2,r.y);
+
 vec3 linear = vec3(0.);
 
 dif *= shadow(p,l);
 ref *= shadow(p,r);
 
-linear += dif * vec3(hash(135.),hash(34.),hash(344.));
-linear += amb * vec3(hash(295.),hash(363.),hash(324.));
-linear += ref * vec3(hash(245.),hash(123.),hash(335.));
-linear += fre * vec3(hash(126.),hash(45.),hash(646.));
-
 if(d.y == 1.) {
-col = vec3(.5);
+
+    linear += dif * vec3(.5);
+    linear += amb * vec3(.05);
+    linear += ref * vec3(4.);
+    linear += fre * vec3(.25);
+
+    col = vec3(bkgcol);
+
 }
 
 if(d.y == 2.) {
 
-float nl = f3(p,hash(122.));
+    linear += dif * vec3(hash(135.),hash(34.),hash(344.));
+    linear += amb * vec3(hash(295.),hash(363.),hash(324.));
+    linear += ref * vec3(hash(245.),hash(123.),hash(335.));
+    linear += fre * vec3(hash(126.),hash(45.),hash(646.)); 
 
-if(hash(35.) < hash(232.)) {
-nl = f3(p+f3(p,.5),.5);
-} 
+    float nl = f3(p,hash(122.));
 
-col += fmCol(p.y + nl,vec3(hash(112.),hash(33.),hash(21.)),
-                      vec3(hash(12.),hash(105.),hash(156.)), 
-                      vec3(hash(32.),hash(123.),hash(25.)),
-                      vec3(hash(10.),hash(15.),hash(27.)));               
+    if(hash(35.) < hash(232.)) {
+        nl = f3(p+f3(p,.5),.5);
+    } 
+
+    col += fmCol(p.y + nl,vec3(hash(112.),hash(33.),hash(21.)),
+                          vec3(hash(12.),hash(105.),hash(156.)), 
+                          vec3(hash(32.),hash(123.),hash(25.)),
+                          vec3(hash(10.),hash(15.),hash(27.)));               
                         
 }
 
 col = col * linear;
 col += 5. * spe * vec3(hash(146.),hash(925.),hash(547.));
 
-col = mix(col,vec3(bkgcol),1. - exp(-.0001 * d.x * d.x * d.x));
+col = mix(col,vec3(1.),1. - exp(-.0001 * d.x * d.x * d.x));
 
 } 
 
@@ -940,10 +954,10 @@ let s = Math.abs(r.int32());
 
 let cast = {
 
-    steps : 500,
-    eps : 0.0001,
+    steps : 350,
+    eps : 0.00001,
     dmin : 0.,
-    dmax : 1500.
+    dmax : 500.
 
 };
 
@@ -956,12 +970,12 @@ let camera = {
 
 let light = {
 
-    bkg  : [255.,255.,255.],
+    bkg  : [25.,45.,25.],
     gamma : true,
     rendernormals : false,
-    shsteps : 0.,
-    shmax : 2.,
-    shblur : 10.
+    shsteps : 16,
+    shmax : 6.,
+    shblur : 45.
 
 };
 
@@ -1010,9 +1024,9 @@ let lightfolder = gui.addFolder('light');
 lightfolder.addColor(light,'bkg').onChange(updateUniforms);
 lightfolder.add(light,'rendernormals').onChange(updateUniforms);
 lightfolder.add(light,'gamma').onChange(updateUniforms);
-lightfolder.add(light,'shsteps',0,25).onChange(updateUniforms);
-lightfolder.add(light,'shmax',0,10).onChange(updateUniforms);
-lightfolder.add(light,'shblur',0,25).onChange(updateUniforms);
+lightfolder.add(light,'shsteps',0,100).onChange(updateUniforms);
+lightfolder.add(light,'shmax',0,45).onChange(updateUniforms);
+lightfolder.add(light,'shblur',0,500).onChange(updateUniforms);
 
 let noisefolder = gui.addFolder('noise');
 noisefolder.add(noise,'reseed');
@@ -1102,7 +1116,7 @@ function init() {
         controls.minDistance = 0.;
         controls.maxDistance = 25.;
         controls.target = target.position;
-        controls.maxPolarAngle = 2.;
+        controls.maxPolarAngle = 1.25;
         controls.enableDamping = true;
         controls.enablePanning = false;
         controls.enabled = false;
@@ -1165,10 +1179,15 @@ function updateUniforms() {
     material.uniforms.octaves.value = noise.octaves; 
     material.uniforms.speed.value = animate.speed;
     material.uniforms.fov.value = camera.fov;
+
     material.uniforms.steps.value = cast.steps;
     material.uniforms.eps.value = cast.eps;
     material.uniforms.dmin.value = cast.dmin;
     material.uniforms.dmax.value = cast.dmax;
+
+    material.uniforms.bkgcol.value = 
+    new THREE.Color().setRGB(light.bkg[0]/255,light.bkg[1]/255,light.bkg[2]/255);
+
     material.uniforms.gamma.value = light.gamma;
     material.uniforms.rendernormals.value = light.rendernormals;
     material.uniforms.shsteps.value = light.shsteps;
