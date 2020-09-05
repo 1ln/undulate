@@ -39,11 +39,17 @@ uniform float shmax;
 uniform float shblur;
 uniform float speed;
 
+uniform int boxregular;
 uniform int boxdiags;
 uniform int mengerbox;
 uniform int mengerdiag;
 uniform int octamenger;
 uniform int octabox;
+uniform int gyroidbox;
+uniform int gyroidsphere;
+uniform int trefoil3;
+uniform int boxnoise;
+uniform int sinesphere;
 
 const float E    =  2.7182818;
 const float PI   =  radians(180.0); 
@@ -714,6 +720,8 @@ vec2 scene(vec3 p) {
     p.xz *= rot2(t*s);
     p.zy *= rot2(t*s);
 
+    d = box(p,vec3(1.));
+
     d = menger(p,5,1.,box(p,vec3(1.)));
   
     d = menger(p,4,2.,octahedron(p,1.));
@@ -727,7 +735,7 @@ vec2 scene(vec3 p) {
     d = gyroid(p,6.,.5,.05,box(p,vec3(1.)));
 
     d = trefoil(p,vec2(1.5,.25),3.,.25,.5); 
-
+   
     res = opu(res,vec2(d,2.)); 
     
     //p.y += ns2(p.xz * .005 + f2(p.xz * .025) * .125) * 10.;
@@ -896,7 +904,7 @@ if(d.y == 2.) {
 
     col += fmCol(p.y + nl,vec3(hash(112.),hash(33.),hash(21.)),
                           vec3(hash(12.),hash(105.),hash(156.)), 
-                          vec3(hash(32.),hash(123.),hash(25.)),
+                          vec3(hash(32.),hash(123.),hash(25.)),         
                           vec3(hash(10.),hash(15.),hash(27.)));               
                         
 }
