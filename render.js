@@ -40,16 +40,8 @@ uniform float shblur;
 uniform float speed;
 
 uniform int boxregular;
-uniform int boxdiags;
 uniform int mengerbox;
-uniform int mengerdiag;
-uniform int octamenger;
-uniform int octabox;
 uniform int gyroidbox;
-uniform int gyroidsphere;
-uniform int trefoil3;
-uniform int boxnoise;
-uniform int sinesphere;
 
 const float E    =  2.7182818;
 const float PI   =  radians(180.0); 
@@ -456,12 +448,12 @@ vec4 el(vec3 p,vec3 h) {
 }
 
 float extr(vec3 p,float d,float h) {
-    vec2 w = vec2(d,abs(p.xz) - h);
+    vec2 w = vec2(d,abs(p.z) - h);
     return min(max(w.x,w.y),0.) + length(max(w,0.)); 
 } 
 
-vec2 rev(vec3 p,float w) {
-    return vec2(length(p.xz) - w,p.y);
+vec2 rev(vec3 p,float w,float f) {
+    return vec2(length(p.xz) - w * f,p.y);
 } 
 
 vec3 twist(vec3 p,float k) {
@@ -720,10 +712,18 @@ vec2 scene(vec3 p) {
     p.xz *= rot2(t*s);
     p.zy *= rot2(t*s);
 
+    if(boxregular == 1) {
     d = box(p,vec3(1.));
+    }
 
+    if(mengerbox == 1) {
     d = menger(p,5,1.,box(p,vec3(1.)));
-  
+    }
+
+    if(gyroidbox == 1) {
+    d = gyroid(p,6.,.5,.05,box(p,vec3(1.)));
+    }    
+
     d = menger(p,4,2.,octahedron(p,1.));
 
     d = max(
@@ -735,10 +735,10 @@ vec2 scene(vec3 p) {
     d = gyroid(p,6.,.5,.05,box(p,vec3(1.)));
 
     d = trefoil(p,vec2(1.5,.25),3.,.25,.5); 
-   
+
+    d = circle(rev(p,1.,pow(2.,1./3.)),0.);
+
     res = opu(res,vec2(d,2.)); 
-    
-    //p.y += ns2(p.xz * .005 + f2(p.xz * .025) * .125) * 10.;
 
     float pl = plane(q+vec3(0.,1.5,0.),vec4(0.,1.,0.,1.));
     res = opu(res,vec2(pl,1.));
@@ -1003,13 +1003,9 @@ let animate = {
 
 let demo = {
 
-    spherelog : true,
-    boxspheres : false,
-    undulate : false,
-    level : false,
-    randboxes : false,
-    menger    : false,
-    grid      : false
+    boxregular : true,
+    mengerbox  : false,
+    gyroidbox  : false
 
 };
 
@@ -1046,41 +1042,20 @@ animatefolder.add(animate,'speed',0.,.01).onChange(updateUniforms);
 
 let scenefolder = gui.addFolder('demo');
 
-let spherelog = scenefolder.add(demo,'spherelog')
-.name('Sphere Log').listen().onChange(function() {
-setScene('spherelog')
+let boxregular = scenefolder.add(demo,'boxregular')
+.name('Box').listen().onChange(function() {
+setScene('boxregular')
 });
 
-let boxspheres = scenefolder.add(demo,'boxspheres')
-.name('Box Spheres').listen().onChange(function() {
-setScene('boxspheres')
+let mengerbox = scenefolder.add(demo,'mengerbox')
+.name('Menger Box').listen().onChange(function() {
+setScene('mengerbox')
 });
 
-let undulate = scenefolder.add(demo,'undulate')
-.name('Undulate box').listen().onChange(function() {
-setScene('undulate')
+let gyroidbox = scenefolder.add(demo,'gyroidbox')
+.name('Gyroid Box').listen().onChange(function() {
+setScene('gyroidbox')
 });
-
-let level = scenefolder.add(demo,'level')
-.name('Level').listen().onChange(function() {
-setScene('level')
-});
-
-let randboxes = scenefolder.add(demo,'randboxes')
-.name('Rand Boxes').listen().onChange(function() {
-setScene('randboxes')
-});
-
-let menger = scenefolder.add(demo,'menger')
-.name('Menger').listen().onChange(function() {
-setScene('menger')
-});
-
-let grid = scenefolder.add(demo,'grid')
-.name('Grid').listen().onChange(function() {
-setScene('grid')
-});
-
 
 init();
 render();
@@ -1133,13 +1108,9 @@ function init() {
 
        uniforms : {
     
-           spherelog  : { value : demo.spherelog },
-           boxspheres : { value : demo.boxspheres },
-           level      : { value : demo.level },
-           undulate   : { value : demo.undulate },
-           grid       : { value : demo.grid },
-           menger     : { value : demo.menger },
-           randboxes  : { value : demo.randboxes },
+           boxregular : { value : demo.boxregular },
+           mengerbox  : { value : demo.mengerbox },
+           gyroidbox  : { value : demo.gyroidbox },
 
            res        : new THREE.Uniform(new THREE.Vector2(w,h)),
         
@@ -1175,13 +1146,9 @@ function init() {
 
 function updateUniforms() {
 
-    material.uniforms.spherelog.value = demo.spherelog;
-    material.uniforms.boxspheres.value = demo.boxspheres;
-    material.uniforms.level.value = demo.level;
-    material.uniforms.undulate.value = demo.undulate;
-    material.uniforms.randboxes.value = demo.randboxes;
-    material.uniforms.menger.value = demo.menger;
-    material.uniforms.grid.value = demo.grid; 
+    material.uniforms.boxregular.value = demo.boxregular;
+    material.uniforms.mengerbox.value = demo.mengerbox;
+    material.uniforms.gyroidbox.value = demo.gyroidbox; 
  
     material.uniforms.seed.value = noise.seed;
     material.uniforms.octaves.value = noise.octaves; 
