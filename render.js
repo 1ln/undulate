@@ -22,38 +22,17 @@ out vec4 out_FragColor;
 varying vec2 uVu;
 
 uniform vec2 res;
-uniform vec3 target;
-uniform float fov;
+
 uniform int seed;
-uniform int octaves;
-uniform int gamma;
-uniform int rendernormals;
+
 uniform float time;
+
 uniform int steps;
 uniform float eps;
 uniform float dmin;
 uniform float dmax;
-uniform vec3 bkgcol;
-uniform int shsteps;
-uniform float shmax;
-uniform float shblur;
-uniform float speed;
 
-uniform int boxregular;
-uniform int mengerbox;
-uniform int gyroidbox;
-
-const float E    =  2.7182818;
 const float PI   =  radians(180.0); 
-const float PI2  =  PI * 2.;
-const float PHI  =  (1.0 + sqrt(5.0)) / 2.0;
-
-const float fog_distance = 0.0001;
-const float fog_density = 3.;
-
-vec2 mod289(vec2 p) { return p - floor(p * (1. / 289.)) * 289.; }
-vec3 mod289(vec3 p) { return p - floor(p * (1. / 289.)) * 289.; }
-vec3 permute(vec3 p) { return mod289(((p * 34.) + 1.) * p); } 
 
 float hash(float p) {
     uvec2 n = uint(int(p)) * uvec2(uint(int(seed)),2531151992.0);
@@ -65,129 +44,6 @@ float hash(vec2 p) {
     uvec2 n = uvec2(ivec2(p)) * uvec2(uint(int(seed)),2531151992.0);
     uint h = (n.x ^ n.y) * uint(int(seed));
     return float(h) * (1./float(0xffffffffU));
-}
-
-vec3 hash3(vec3 p) {
-   uvec3 h = uvec3(ivec3(  p)) *  uvec3(uint(int(seed)),2531151992.0,2860486313U);
-   h = (h.x ^ h.y ^ h.z) * uvec3(uint(int(seed)),2531151992U,2860486313U);
-   return vec3(h) * (1.0/float(0xffffffffU));
-
-}
-
-vec2 uvd() {
-   return gl_FragCoord.xy / res.xy;
-}
-
-vec2 diag(vec2 uv) {
-   vec2 r = vec2(0.);
-   r.x = 1.1547 * uv.x;
-   r.y = uv.y + .5 * r.x;
-   return r;
-}
-
-vec3 simplexGrid(vec2 uv) {
-
-    vec3 q = vec3(0.);
-    vec2 p = fract(diag(uv));
-    
-    if(p.x > p.y) {
-        q.xy = 1. - vec2(p.x,p.y-p.x);
-        q.z = p.y;
-    } else {
-        q.yz = 1. - vec2(p.x-p.y,p.y);
-        q.x = p.x;
-    }
-    return q;
-
-}
-
-float radial(vec2 uv,float b) {
-    vec2 p = vec2(.5) - uv;
-    float a = atan(p.y,p.x);
-    return cos(a * b);
-}
-
-float sedge(float v) {
-    return smoothstep(0.,1. / res.x,v);
-}
- 
-float cell(vec3 x,float iterations,int type) {
- 
-    x *= iterations;
-
-    vec3 p = floor(x);
-    vec3 f = fract(x);
- 
-    float min_dist = 1.0;
-    
-    for(int i = -1; i <= 1; i++) {
-        for(int j = -1; j <= 1; j++) {
-            for(int k = -1; k <= 1; k++) { 
-
-                vec3 b = vec3(float(k),float(j),float(i));
-                vec3 r = hash3( p + b );
-                
-                vec3 diff = (b + r - f);
-
-                float d = length(diff);
-
-                    if(type == 0) { 
-                        min_dist = min(min_dist,d);
-                    }
- 
-                    if(type == 1) {
-                        min_dist = min(min_dist,abs(diff.x)+abs(diff.y)+abs(diff.z));
-                    }
-
-                    if(type == 2) {
-                        min_dist = min(min_dist,max(abs(diff.x),max(abs(diff.y),abs(diff.z))));
-                    }
-
-            }
-        }
-    }
- 
-    return min_dist;  
-
-}
-
-float ns2(vec2 p) {
-
-    const float k1 = (3. - sqrt(3.))/6.;
-    const float k2 = .5 * (sqrt(3.) -1.);
-    const float k3 = -.5773;
-    const float k4 = 1./41.;
-
-    const vec4 c = vec4(k1,k2,k3,k4);
-    
-    vec2 i = floor(p + dot(p,c.yy));
-    vec2 x0 = p - i + dot(i,c.xx);
-  
-    vec2 i1;
-    i1 = (x0.x > x0.y) ? vec2(1.,0.) : vec2(0.,1.);
-    vec4 x12 = x0.xyxy + c.xxzz;
-    x12.xy -= i1;
-
-    i = mod289(i);
-    
-    vec3 p1 = permute(permute(i.y + vec3(0.,i1.y,1.))
-        + i.x + vec3(0.,i1.x,1.));
-        p1 = permute(mod289(p1 + vec3(float(seed))));
-
-    vec3 m = max(.5 - vec3(dot(x0,x0),dot(x12.xy,x12.xy),dot(x12.zw,x12.zw)),0.);
-    m = m * m; 
-    m = m * m;
-
-    vec3 x = fract(p1 * c.www) - 1.;
-    vec3 h = abs(x) - .5;
-    vec3 ox = floor(x + .5);
-    vec3 a0 = x - ox; 
-    m *= 1.792842 - 0.853734 * (a0 * a0 + h * h);
-     
-    vec3 g;
-    g.x = a0.x * x0.x + h.x * x0.y;
-    g.yz = a0.yz * x12.xz + h.yz * x12.yw;
-    return 130. * dot(m,g);
 }
 
 float n3(vec3 x) {
@@ -204,21 +60,6 @@ float n3(vec3 x) {
                    mix(hash(  n + 270.0) , hash(   n + 271.0)   ,f.x),f.y),f.z);
 }
 
-float f2(vec2 x) {
-
-    float f = 0.;
-
-    for(int i = 1; i < octaves; i++) {
- 
-    float e = pow(2.,float(i));
-    float s = (1./e);
-    f += ns2(x*e)*s;   
-    
-    }    
-
-    return f * .5 + .5;
-}
-
 float f3(vec3 x,float hurst) {
 
     float s = 0.;
@@ -226,7 +67,7 @@ float f3(vec3 x,float hurst) {
     float f = 1.;
     float a = .5;
 
-    for(int i = 0; i < octaves; i++) {
+    for(int i = 0; i < 5; i++) {
 
         s += a * n3(f * x);  
         f *= 2.;
@@ -235,41 +76,14 @@ float f3(vec3 x,float hurst) {
     return s;
 }
 
-float sin2(vec2 p,float s) {
-    
-    return sin(p.x*s) * sin(p.y*s);
-}
-
 float sin3(vec3 p,float s) {
     return sin(p.x * s) * sin(p.y * s) * sin(p.z * s);
-}
-
-float fib(float n) {
-
-    return pow(( 1. + sqrt(5.)) /2.,n) -
-           pow(( 1. - sqrt(5.)) /2.,n) / sqrt(5.); 
-
 }
 
 float envImp(float x,float k) {
 
     float h = k * x;
     return h * exp(1.0 - h);
-}
-
-float envSt(float x,float k,float n) {
-
-    return exp(-k * pow(x,n));
-
-}
-
-float cubicImp(float x,float c,float w) {
-
-    x = abs(x - c);
-    if( x > w) { return 0.0; }
-    x /= w;
-    return 1.0 - x * x  * (3.0 - 2.0 * x);
-
 }
 
 float sincPh(float x,float k) {
@@ -284,28 +98,6 @@ vec3 fmCol(float t,vec3 a,vec3 b,vec3 c,vec3 d) {
     return a + b * cos( (PI*2.0) * (c * t + d));
 }
 
-vec3 rgbHsv(vec3 c) {
-
-    vec3 rgb = clamp(abs(mod(c.x * 6. + vec3(0.,4.,2.),
-               6.)-3.)-1.,0.,1.);
-
-    rgb = rgb * rgb * (3. - 2. * rgb);
-    return c.z * mix(vec3(1.),rgb,c.y);
-
-}
-
-float easeIn4(float t) {
-
-    return t * t;
-
-}
-
-float easeOut4(float t) {
-
-    return -1.0 * t * (t - 2.0);
-
-}
-
 float easeInOut4(float t) {
 
     if((t *= 2.0) < 1.0) {
@@ -315,26 +107,10 @@ float easeInOut4(float t) {
     }
 }
 
-float easeIn3(float t) {
-
-    return t * t * t;
-
-}
-
 float easeOut3(float t) {
 
     return (t = t - 1.0) * t * t + 1.0;
 
-}
-
-float easeInOut3(float t) {
-
-    if((t *= 2.0) < 1.0) {
-        return 0.5 * t * t * t;
-    } else { 
-        return 0.5 * ((t -= 2.0) * t * t + 2.0);
-
-    }
 }
 
 mat2 rot2(float a) {
@@ -343,64 +119,6 @@ mat2 rot2(float a) {
     float s = sin(a);
     
     return mat2(c,-s,s,c);
-}
-
-mat4 rotAxis(vec3 axis,float theta) {
-
-axis = normalize(axis);
-
-    float c = cos(theta);
-    float s = sin(theta);
-
-    float oc = 1.0 - c;
-
-    return mat4(
- 
-        oc * axis.x * axis.x + c, 
-        oc * axis.x * axis.y - axis.z * s,
-        oc * axis.z * axis.x + axis.y * s, 
-        0.0,
-        oc * axis.x * axis.y + axis.z * s,
-        oc * axis.y * axis.y + c, 
-        oc * axis.y * axis.z - axis.x * s,
-        0.0,
-        oc * axis.z * axis.x - axis.y * s,
-        oc * axis.y * axis.z + axis.x * s, 
-        oc * axis.z * axis.z + c, 
-        0.0,
-        0.0,0.0,0.0,1.0);
-
-}
-
-mat4 translate(vec3 p) {
- 
-    return mat4(
-        vec4(1,0,0,p.x),
-        vec4(0,1,0,p.y),
-        vec4(0,0,1,p.z),
-        vec4(0,0,0,1)  
-);
-}
-
-vec3 repLim(vec3 p,float c,vec3 l) {
-  
-    vec3 q = p - c * clamp( floor((p/c)+0.5) ,-l,l);
-    return q; 
-}
-
-vec2 repeat(vec2 p,float s) {
-     vec2 q = mod(p,s) - .5 * s;
-     return q;
-}
-
-vec3 repeat(vec3 p,vec3 s) {
-   
-    vec3 q = mod(p,s) - 0.5 * s;
-    return q;
-} 
-
-vec3 id(vec3 p,float s) {
-    return floor(p/s);
 }
 
 vec2 opu(vec2 d1,vec2 d2) {
@@ -442,11 +160,6 @@ float smoi(float d1,float d2,float k) {
 
 }
 
-vec4 el(vec3 p,vec3 h) {
-    vec3 q = abs(p) - h;
-    return vec4(max(q,0.),min(max(q.x,max(q.y,q.z)),0.));
-}
-
 float extr(vec3 p,float d,float h) {
     vec2 w = vec2(d,abs(p.z) - h);
     return min(max(w.x,w.y),0.) + length(max(w,0.)); 
@@ -464,62 +177,8 @@ vec3 twist(vec3 p,float k) {
     return vec3(m * p.xz,p.y);
 }
 
-float layer(float d,float h) {
-
-    return abs(d) - h;
-}
-
-float dot2(vec2 v) { return dot(v,v); }
-float dot2(vec3 v) { return dot(v,v); }
-float ndot(vec2 a,vec2 b) { return a.x * b.x - a.y * b.y; }
-
 float circle(vec2 p,float r) {
     return length(p) - r;
-}
-
-float ring(vec2 p,float r,float w) {
-    return abs(length(p) - r) - w;
-}
-
-float eqTriangle(vec2 p,float r) { 
-
-     const float k = sqrt(3.);
-
-     p.x = abs(p.x) - 1.;
-     p.y = p.y + 1./k;
-
-     if(p.x + k * p.y > 0.) {
-         p = vec2(p.x - k * p.y,-k * p.x - p.y)/2.;
-     }
-
-     p.x -= clamp(p.x,-2.,0.);
-     return -length(p) * sign(p.y);    
-
-} 
-
-float rect(vec2 p,vec2 b) {
-    vec2 d = abs(p)-b;
-    return length(max(d,0.)) + min(max(d.x,d.y),0.);
-}
-
-float roundRect(vec2 p,vec2 b,vec4 r) {
-    r.xy = (p.x > 0.) ? r.xy : r.xz;
-    r.x  = (p.y > 0.) ? r.x  : r.y;
-    vec2 q = abs(p) - b + r.x;
-    return min(max(q.x,q.y),0.) + length(max(q,0.)) - r.x;
-}
-
-float rhombus(vec2 p,vec2 b) {
-   vec2 q = abs(p);
-   float h = clamp(-2. * ndot(q,b)+ndot(b,b) / dot(b,b),-1.,1.);
-   float d = length(q - .5 * b * vec2(1.- h,1. + h));
-   return d * sign(q.x*b.y + q.y*b.x - b.x*b.y);  
-}
-
-float segment(vec2 p,vec2 a,vec2 b) {
-    vec2 pa = p - a, ba = b - a;
-    float h = clamp(dot(pa,ba)/dot(ba,ba),0.,1.);  
-    return length(pa - ba * h);
 }
 
 float sphere(vec3 p,float r) { 
@@ -527,68 +186,9 @@ float sphere(vec3 p,float r) {
     return length(p) - r;
 }
 
-float nsphere(vec3 p,float r) {
-
-    return abs(length(p)-r);
-}
-
-float ellipsoid(vec3 p,vec3 r) {
-
-    float k0 = length(p/r); 
-    float k1 = length(p/(r*r));
-    return k0*(k0-1.0)/k1;
-}
-
-float cone(vec3 p,vec2 c) {
-
-    float q = length(p.xy);
-    return dot(c,vec2(q,p.z));
-}
-
-float roundCone(vec3 p,float r1,float r2,float h) {
-
-    vec2 q = vec2(length(vec2(p.x,p.z)),p.y);
-    float b = (r1-r2)/h;
-    float a = sqrt(1.0 - b*b);
-    float k = dot(q,vec2(-b,a));
-
-    if( k < 0.0) return length(q) - r1;
-    if( k > a*h) return length(q - vec2(0.0,h)) - r2;
-
-    return dot(q,vec2(a,b)) - r1;
-}
-
-float solidAngle(vec3 p,vec2 c,float ra) {
-    
-    vec2 q = vec2(length(vec2(p.x,p.z)),p.y);
-    float l = length(q) - ra;
-    float m = length(q - c * clamp(dot(q,c),0.0,ra));
-    return max(l,m * sign(c.y * q.x - c.x * q.y));
-}
-
-float link(vec3 p,float le,float r1,float r2) {
-
-    vec3 q = vec3(p.x,max(abs(p.y) -le,0.0),p.z);
-    return length(vec2(length(q.xy)-r1,q.z)) - r2;
-}
-
 float plane(vec3 p,vec4 n) {
 
     return dot(p,n.xyz) + n.w;
-}
-
-float capsule(vec3 p,vec3 a,vec3 b,float r) {
-
-    vec3 pa = p - a;
-    vec3 ba = b - a;
-    float h = clamp(dot(pa,ba)/dot(ba,ba),0.0,1.0);
-    return length(pa - ba * h) - r;
-} 
-
-float prism(vec3 p,vec2 h) {
-
-    vec3 q = abs(p);
-    return max(q.z - h.y,max(q.x * 0.866025 + p.y * 0.5,-p.y) - h.x * 0.5); 
 }
 
 float box(vec3 p,vec3 b) {
@@ -597,150 +197,29 @@ float box(vec3 p,vec3 b) {
     return length(max(d,0.0)) + min(max(d.x,max(d.y,d.z)),0.0);
 }
 
-float roundbox(vec3 p,vec3 b,float r) {
-
-    vec3 q = abs(p) - b;
-    return length(max(q,0.0)) + min(max(q.x,max(q.y,q.z)),0.0) - r;
-}
-
-float torus(vec3 p,vec2 t) {
-
-    vec2 q = vec2(length(vec2(p.x,p.z)) - t.x,p.y);
-    return length(q) - t.y; 
-}
-
-float capTorus(vec3 p,vec2 sc,float ra,float rb) {
-    p.x = abs(p.x);
-    float k = (sc.y * p.x > sc.x * p.y) ? dot(p.xy,sc) : length(p.xy);
-    return sqrt(dot(p,p) + ra*ra - 2.*k*ra) - rb;
-}
-
-float cylinder(vec3 p,float h,float r) {
-    
-    float d = length(vec2(p.x,p.z)) - r;
-    d = max(d, -p.y - h);
-    d = max(d, p.y - h);
-    return d; 
-}
-
-float hexPrism(vec3 p,vec2 h) {
- 
-    const vec3 k = vec3(-0.8660254,0.5,0.57735);
-    p = abs(p); 
-    p.xy -= 2.0 * min(dot(k.xy,p.xy),0.0) * k.xy;
- 
-    vec2 d = vec2(length(p.xy - vec2(clamp(p.x,-k.z * h.x,k.z * h.x),h.x)) * sign(p.y-h.x),p.z-h.y);
-    return min(max(d.x,d.y),0.0) + length(max(d,0.0));
-}
-
-float octahedron(vec3 p,float s) {
-
-    p = abs(p);
-
-    float m = p.x + p.y + p.z - s;
-    vec3 q;
-
-    if(3.0 * p.x < m) {
-       q = vec3(p.x,p.y,p.z);  
-    } else if(3.0 * p.y < m) {
-       q = vec3(p.y,p.z,p.x); 
-    } else if(3.0 * p.z < m) { 
-       q = vec3(p.z,p.x,p.y);
-    } else { 
-       return m * 0.57735027;
-    }
-
-    float k = clamp(0.5 *(q.z-q.y+s),0.0,s);
-    return length(vec3(q.x,q.y-s+k,q.z - k)); 
-}
-
-float trefoil(vec3 p,vec2 t,float n,float l,float e) {
-
-    vec2 q = vec2(length(p.xz)-t.x,p.y);     
-
-    float a = atan(p.x,p.z);
-    float c = cos(a*n);
-    float s = sin(a*n);
-
-    mat2 m = mat2(c,-s,s,c);    
-    q *= m;
-
-    q.y = abs(q.y)-l;
-
-    return (length(q) - t.y)*e;
-
-}
-
-float gyroid(vec3 p,float s,float b,float v,float d) {
-
-    p *= s;
-    float g = abs(dot(sin(p),cos(p.zxy))-b)/s-v;
-    return max(d,g*.5);
-
-} 
-
-float menger(vec3 p,int n,float s,float d) {
-
-    for(int i = 0; i < n; i++) {
-
-        vec3 a = mod(p * s,2.)-1.;
-        s *= 3.;
-
-        vec3 r = abs(1. - 3. * abs(a)); 
-       
-        float b0 = max(r.x,r.y);
-        float b1 = max(r.y,r.z);
-        float b2 = max(r.z,r.x);
-
-        float c = (min(b0,min(b1,b2)) - 1.)/s;         
-        d = max(d,c);
-     }
-
-     return d;
-}
-
 vec2 scene(vec3 p) {
 
     vec2 res = vec2(1.,0.);
 
     float d = 0.;     
-    float s = speed;
+    float s = 0.0009;
+
     float t = time;  
     
     vec3 q = p;
+    vec3 l = p;
 
-    p.xz *= rot2(t*s);
-    p.zy *= rot2(t*s);
+    p.xz *= rot2(easeOut3(t*s)*0.002);
+    q.zy *= rot2(easeInOut4(t*s)*0.02);
 
-    if(boxregular == 1) {
-    d = box(p,vec3(1.));
-    }
+    d = mix(sphere(p,0.25),box(q,vec3(1.)),
+    sin(s*t)*0.5+0.5); 
 
-    if(mengerbox == 1) {
-    d = menger(p,5,1.,box(p,vec3(1.)));
-    }
-
-    if(gyroidbox == 1) {
-    d = gyroid(p,6.,.5,.05,box(p,vec3(1.)));
-    }    
-
-    d = menger(p,4,2.,octahedron(p,1.));
-
-    d = max(
-    -plane(q*.5,vec4(1.,-1.,-1.,0.)),
-    menger(p,4,1.,box(p,vec3(1.)))); 
-
-    d = gyroid(p,5.,.35,.015,sphere(p,1.));
-
-    d = gyroid(p,6.,.5,.05,box(p,vec3(1.)));
-
-    d = trefoil(p,vec2(1.5,.25),3.,.25,.5); 
-
-    d = circle(rev(p,1.,pow(2.,1./3.)),0.);
+    d += n3(p+n3(p)*0.25+t*s)*0.25; 
 
     res = opu(res,vec2(d,2.)); 
 
-    float pl = plane(q+vec3(0.,1.5,0.),vec4(0.,1.,0.,1.));
+    float pl = plane(l+vec3(0.,1.5,0.),vec4(0.,1.,0.,1.));
     res = opu(res,vec2(pl,1.));
   
   return res;
@@ -769,35 +248,23 @@ vec2 rayScene(vec3 ro,vec3 rd) {
 
 }
 
-vec3 fog(vec3 col,vec3 fog_col) {
-    float fog_depth = 1. - exp(-fog_distance * fog_density);
-    return mix(col,fog_col,fog_depth);
-}
-
-vec3 scatter(vec3 col,vec3 tf,vec3 ts,vec3 rd,vec3 l) {
-    float fog_depth  = 1. - exp(-fog_distance * fog_density);
-    float light_depth = max(dot(rd,l),0.);
-    vec3 fog_col = mix(tf,ts,pow(light_depth,8.));
-    return mix(col,fog_col,light_depth);
-}
-
 float shadow(vec3 ro,vec3 rd ) {
 
     float res = 1.0;
     float t = 0.005;
     float ph = 1e10;
     
-    for(int i = 0; i < shsteps; i++ ) {
+    for(int i = 0; i < 100; i++ ) {
         
         float h = scene(ro + rd * t  ).x;
 
         float y = h * h / (2. * ph);
         float d = sqrt(h*h-y*y);         
-        res = min(res,shblur * d/max(0.,t-y));
+        res = min(res,45. * d/max(0.,t-y));
         ph = h;
         t += h;
     
-        if(res < eps || t > shmax) { break; }
+        if(res < eps || t > 16.) { break; }
 
         }
 
@@ -829,25 +296,6 @@ vec3 rayCamDir(vec2 uv,vec3 camPosition,vec3 camTarget,float fPersp) {
      vec3 vDir = normalize(uv.x * camRight + uv.y * camUp + camForward * fPersp);  
 
      return vDir;
-}
-
-vec3 renderPhong(vec2 uv,vec3 n,vec3 light_pos,vec3 ambc,vec3 difc) {
-
-     vec3 ld = normalize(vec3(light_pos - vec3(uv,0.)));
-     float dif = max(0.,dot(n,ld));
-     vec3 ref = normalize(reflect(-ld,n));
-     float spe = pow(max(0.,dot(n,ref)),8.); 
-     return min(vec3(1.),ambc + difc * dif + spe);
-}
-
-vec3 renderNormals(vec3 ro,vec3 rd) {
-
-   vec2 d = rayScene(ro,rd);
-   vec3 p = ro + rd * d.x;
-   vec3 n = calcNormal(p);   
-   vec3 col = vec3(n);
-   
-   return col;
 }
 
 vec3 render(vec3 ro,vec3 rd) {
@@ -885,7 +333,7 @@ if(d.y == 1.) {
     linear += ref * vec3(4.);
     linear += fre * vec3(.25);
 
-    col = vec3(bkgcol);
+    col = vec3(0.5);
 
 }
 
@@ -896,11 +344,7 @@ if(d.y == 2.) {
     linear += ref * vec3(hash(245.),hash(123.),hash(335.));
     linear += fre * vec3(hash(126.),hash(45.),hash(646.)); 
 
-    float nl = f3(p,hash(122.));
-
-    if(hash(35.) < hash(232.)) {
-        nl = f3(p+f3(p,.5),.5);
-    } 
+    float nl = f3(p,hash(122.)); 
 
     col += fmCol(p.y + nl,vec3(hash(112.),hash(33.),hash(21.)),
                           vec3(hash(12.),hash(105.),hash(156.)), 
@@ -923,22 +367,14 @@ void main() {
  
 vec3 color = vec3(0.);
 
-vec3 cam_tar = vec3(target);
+vec3 cam_tar = vec3(0.);
 vec3 cam_pos = cameraPosition;
 
 vec2 uvu = -1. + 2. * uVu.xy; 
 uvu.x *= res.x/res.y; 
 
-vec3 dir = rayCamDir(uvu,cam_pos,cam_tar,fov); 
+vec3 dir = rayCamDir(uvu,cam_pos,cam_tar,2.); 
 color = render(cam_pos,dir);  
-
-if(rendernormals == 1) {
-    color = renderNormals(cam_pos,dir);
-}
-
-if(gamma == 1) {  
-    color = pow(color,vec3(.4545));      
-}
 
 out_FragColor = vec4(color,1.0);
 
@@ -955,7 +391,6 @@ let plane,w,h;
 
 let cam,controls,target;
 let sphere,sphere_mat;
-let fov;
 
 let r = new Math.seedrandom();
 let s = Math.abs(r.int32());
@@ -969,93 +404,14 @@ let cast = {
 
 };
 
-let camera = {
-
-    fov : 2.,
-    orbitcontrols : true
-
-};
-
-let light = {
-
-    bkg  : [25.,45.,25.],
-    gamma : true,
-    rendernormals : false,
-    shsteps : 16,
-    shmax : 6.,
-    shblur : 45.
-
-};
-
-let noise = {
-    
-    seed : s,
-    reseed : function() { reSeed(); }, 
-    octaves : 4
-      
-};
-
-let animate = {
-    
-    speed : .0001
-
-};
-
-let demo = {
-
-    boxregular : true,
-    mengerbox  : false,
-    gyroidbox  : false
-
-};
-
 let gui = new dat.GUI();
 
 let castfolder = gui.addFolder('cast');
 
-castfolder.add(cast,'steps',0,2000).onChange(updateUniforms);
+castfolder.add(cast,'steps',500).onChange(updateUniforms);
 castfolder.add(cast,'eps',0.00001).onChange(updateUniforms); 
-castfolder.add(cast,'dmin',0.,1000).onChange(updateUniforms);
+castfolder.add(cast,'dmin',0.,10.).onChange(updateUniforms);
 castfolder.add(cast,'dmax',0.,2000.).onChange(updateUniforms);
-
-let camerafolder = gui.addFolder('camera');
-
-camerafolder.add(camera,'fov',2.).onChange(updateUniforms);
-camerafolder.add(camera,'orbitcontrols').onChange(render);
-
-let lightfolder = gui.addFolder('light');
-
-lightfolder.addColor(light,'bkg').onChange(updateUniforms);
-lightfolder.add(light,'rendernormals').onChange(updateUniforms);
-lightfolder.add(light,'gamma').onChange(updateUniforms);
-lightfolder.add(light,'shsteps',0,100).onChange(updateUniforms);
-lightfolder.add(light,'shmax',0,45).onChange(updateUniforms);
-lightfolder.add(light,'shblur',0,500).onChange(updateUniforms);
-
-let noisefolder = gui.addFolder('noise');
-noisefolder.add(noise,'reseed');
-noisefolder.add(noise,'seed').listen().onChange(updateUniforms);
-noisefolder.add(noise,'octaves').onChange(updateUniforms);
-
-let animatefolder = gui.addFolder('animate');
-animatefolder.add(animate,'speed',0.,.01).onChange(updateUniforms);
-
-let scenefolder = gui.addFolder('demo');
-
-let boxregular = scenefolder.add(demo,'boxregular')
-.name('Box').listen().onChange(function() {
-setScene('boxregular')
-});
-
-let mengerbox = scenefolder.add(demo,'mengerbox')
-.name('Menger Box').listen().onChange(function() {
-setScene('mengerbox')
-});
-
-let gyroidbox = scenefolder.add(demo,'gyroidbox')
-.name('Gyroid Box').listen().onChange(function() {
-setScene('gyroidbox')
-});
 
 init();
 render();
@@ -1085,8 +441,8 @@ function init() {
     renderer.setSize(w,h);
     
     cam = new THREE.PerspectiveCamera(0.,w/h,0.,1.);
-    cam.position.set(0.,10.,15.);
-
+    cam.position.set(1.,5.,1.15);
+    
     sphere = new THREE.SphereBufferGeometry();
     sphere_mat = new THREE.Material();
     target = new THREE.Mesh(sphere,sphere_mat);
@@ -1095,42 +451,17 @@ function init() {
     
     cam.lookAt(target);
 
-    controls = new THREE.OrbitControls(cam,canvas);
-        controls.minDistance = 0.;
-        controls.maxDistance = 25.;
-        controls.target = target.position;
-        controls.maxPolarAngle = 1.25;
-        controls.enableDamping = true;
-        controls.enablePanning = false;
-        controls.enabled = false;
-
     material = new THREE.ShaderMaterial({
 
        uniforms : {
     
-           boxregular : { value : demo.boxregular },
-           mengerbox  : { value : demo.mengerbox },
-           gyroidbox  : { value : demo.gyroidbox },
-
-           res        : new THREE.Uniform(new THREE.Vector2(w,h)),
-        
-           bkgcol     : new THREE.Uniform(new THREE.Color()
-               .setRGB(light.bkg[0]/255.,light.bkg[1]/255.,light.bkg[2]/255.)),
-
+           res        : new THREE.Uniform(new THREE.Vector2(w,h)),    
            time          : { value : 1. },
-           seed          : { value : noise.seed },
-           octaves       : { value : noise.octaves },
-           fov           : { value : camera.fov },
+           seed          : { value : s },
            steps         : { value : cast.steps },
            eps           : { value : cast.eps },
            dmin          : { value : cast.dmin },
-           dmax          : { value : cast.dmax },
-           speed         : { value : animate.speed },
-           gamma         : { value : light.gamma },
-           rendernormals : { value : light.rendernormals },
-           shsteps       : { value : light.shsteps },
-           shmax         : { value : light.shmax },
-           shblur        : { value : light.shblur }
+           dmax          : { value : cast.dmax }
 
        },
 
@@ -1146,42 +477,13 @@ function init() {
 
 function updateUniforms() {
 
-    material.uniforms.boxregular.value = demo.boxregular;
-    material.uniforms.mengerbox.value = demo.mengerbox;
-    material.uniforms.gyroidbox.value = demo.gyroidbox; 
- 
-    material.uniforms.seed.value = noise.seed;
-    material.uniforms.octaves.value = noise.octaves; 
-    material.uniforms.speed.value = animate.speed;
-    material.uniforms.fov.value = camera.fov;
-
     material.uniforms.steps.value = cast.steps;
     material.uniforms.eps.value = cast.eps;
     material.uniforms.dmin.value = cast.dmin;
     material.uniforms.dmax.value = cast.dmax;
 
-    material.uniforms.bkgcol.value = 
-    new THREE.Color().setRGB(light.bkg[0]/255,light.bkg[1]/255,light.bkg[2]/255);
-
-    material.uniforms.gamma.value = light.gamma;
-    material.uniforms.rendernormals.value = light.rendernormals;
-    material.uniforms.shsteps.value = light.shsteps;
-    material.uniforms.shmax.value = light.shmax;
-    material.uniforms.shblur.value = light.shblur;
-
 }
     function render() {
-
-        if(camera.orbitcontrols) {
-
-            controls.enabled = true;
-            controls.update();
-
-        } else {
-
-            controls.enabled = false;
-
-       }
 
     updateUniforms();
  
@@ -1193,17 +495,3 @@ function updateUniforms() {
 
 }
 
-function reSeed() {
-
-    noise.seed = Math.abs(r.int32());
-
-}
-
-function setScene(prop) {
-
-    for(let param in demo) {
-        demo[param] = false;
-    }
-    demo[prop] = true;
-
-}
